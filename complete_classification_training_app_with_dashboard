@@ -1,0 +1,1375 @@
+# ============================================================
+# COMPLETE CLASSIFICATION SOCIETY TRAINING PLATFORM
+# Streamlit + Excel Database
+# ------------------------------------------------------------
+# Correct run command:
+#   pip install -r requirements.txt
+#   streamlit run complete_classification_training_app_no_warnings.py
+#
+# This version fixes:
+# 1) use_container_width warning by using width="stretch"
+# 2) missing ScriptRunContext warning by stopping if run with python directly
+# ============================================================
+
+import sys
+import subprocess
+import importlib.util
+from pathlib import Path
+
+# ============================================================
+# MODULE 0: PACKAGE CHECK
+# ============================================================
+
+def ensure_package(package_name):
+    """Install missing package automatically for easy local testing."""
+    if importlib.util.find_spec(package_name) is None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+
+for package in ["streamlit", "pandas", "openpyxl"]:
+    ensure_package(package)
+
+import os
+import uuid
+import smtplib
+from email.message import EmailMessage
+from datetime import datetime, date
+
+import pandas as pd
+import streamlit as st
+
+# Prevent Streamlit ScriptRunContext warnings if user runs:
+# python complete_classification_training_app_no_warnings.py
+try:
+    from streamlit.runtime.scriptrunner import get_script_run_ctx
+    if get_script_run_ctx() is None:
+        print("\nThis is a Streamlit app.")
+        print("Please run it using:")
+        print("streamlit run complete_classification_training_app_no_warnings.py\n")
+        sys.exit(0)
+except Exception:
+    pass
+
+DB_FILE = "classification_society_training_platform.xlsx"
+
+# ============================================================
+# FRONT-END THEME / UI HELPERS
+# ============================================================
+
+def apply_frontend_theme():
+    st.markdown("""
+    <style>
+    .main {
+        background-color: #f8fafc;
+    }
+    .block-container {
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }
+    .app-title {
+        padding: 1.2rem 1.4rem;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: white;
+        margin-bottom: 1rem;
+    }
+    .app-title h1 {
+        margin: 0;
+        font-size: 2rem;
+    }
+    .app-title p {
+        margin: 0.4rem 0 0 0;
+        color: #cbd5e1;
+    }
+    .role-card {
+        padding: 1rem;
+        border-radius: 18px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+        margin-bottom: 1rem;
+    }
+    .action-card {
+        padding: 1rem;
+        border-radius: 18px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+        margin-bottom: 1rem;
+    }
+    .workflow-step {
+        padding: 0.75rem 1rem;
+        border-radius: 14px;
+        background: #f1f5f9;
+        margin-bottom: 0.45rem;
+        border-left: 4px solid #0f172a;
+        font-size: 0.9rem;
+    }
+    .success-pill {
+        display: inline-block;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        background: #dcfce7;
+        color: #166534;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+    .warning-pill {
+        display: inline-block;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        background: #fef3c7;
+        color: #92400e;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+    .info-pill {
+        display: inline-block;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1e40af;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+def app_header():
+    st.markdown("""
+    <div class="app-title">
+        <h1>Classification Society Training Platform</h1>
+        <p>Role-based LMS for Surveyors, Plan Appraisers, Trainers, Admin and Management with Excel database automation.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+def role_welcome_card(actor):
+    st.markdown(f"""
+    <div class="role-card">
+        <h3 style="margin-bottom:0.2rem;">Welcome, {actor.get("Name", "")}</h3>
+        <p style="margin:0;">Role: <b>{actor.get("Role", "")}</b> | Department: {actor.get("Department", "")} | Email: {actor.get("Email", "")}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+def action_panel(title, description):
+    st.markdown(f"""
+    <div class="action-card">
+        <h3 style="margin-bottom:0.35rem;">{title}</h3>
+        <p style="margin:0;color:#475569;">{description}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+def workflow_box(steps):
+    for index, step in enumerate(steps, start=1):
+        st.markdown(f'<div class="workflow-step"><b>{index}.</b> {step}</div>', unsafe_allow_html=True)
+
+def status_pill(status):
+    status = str(status)
+    if status in ["Completed", "Passed", "Issued", "Present", "Yes", "Sent"]:
+        return f'<span class="success-pill">{status}</span>'
+    if status in ["Pending", "Draft", "Scheduled", "Not Attempted", "No", "Generated", "Absent"]:
+        return f'<span class="warning-pill">{status}</span>'
+    return f'<span class="info-pill">{status}</span>'
+
+# ============================================================
+# MODULE 1: GENERAL HELPERS
+# ============================================================
+
+def now():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def today():
+    return date.today().strftime("%Y-%m-%d")
+
+def make_id(prefix):
+    return f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
+
+def read_sheet(sheet_name):
+    try:
+        return pd.read_excel(DB_FILE, sheet_name=sheet_name, engine="openpyxl")
+    except Exception:
+        return pd.DataFrame()
+
+def save_sheet(sheet_name, df):
+    """
+    Save one sheet while preserving other sheets.
+    Uses openpyxl engine explicitly.
+    """
+    if Path(DB_FILE).exists():
+        with pd.ExcelWriter(DB_FILE, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+    else:
+        with pd.ExcelWriter(DB_FILE, engine="openpyxl") as writer:
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+def append_row(sheet_name, row):
+    df = read_sheet(sheet_name)
+    df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+    save_sheet(sheet_name, df)
+
+def show_df(df):
+    """Central dataframe display function using new Streamlit width syntax."""
+    st.dataframe(df, width="stretch")
+
+def log_activity(
+    activity,
+    actor_id="",
+    actor_name="",
+    actor_role="",
+    staff_id="",
+    training_id="",
+    status="Success",
+    remarks=""
+):
+    append_row("Activity_Log", {
+        "Log_ID": make_id("LOG"),
+        "Date_Time": now(),
+        "Activity": activity,
+        "Actor_ID": actor_id,
+        "Actor_Name": actor_name,
+        "Actor_Role": actor_role,
+        "Staff_ID": staff_id,
+        "Training_ID": training_id,
+        "Status": status,
+        "Remarks": remarks,
+    })
+    update_dashboard()
+
+def download_excel_button():
+    if Path(DB_FILE).exists():
+        with open(DB_FILE, "rb") as file:
+            st.sidebar.download_button(
+                label="Download Excel Database",
+                data=file,
+                file_name=DB_FILE,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+
+# ============================================================
+# MODULE 2: ROLE PERMISSIONS
+# ============================================================
+
+ROLE_PERMISSIONS = {
+    "Management": [
+        "view_dashboard",
+        "view_all_records",
+        "view_certificates",
+        "view_notifications",
+    ],
+    "Admin": [
+        "view_dashboard",
+        "manage_staff",
+        "assign_roles",
+        "create_training",
+        "assign_trainer",
+        "assign_trainees",
+        "view_all_records",
+        "view_notifications",
+        "view_certificates",
+    ],
+    "Trainer": [
+        "view_trainer_trainings",
+        "update_training_fields",
+        "submit_training_schedule",
+        "generate_notifications",
+        "mark_attendance",
+        "upload_recording",
+        "review_results",
+    ],
+    "Surveyor": [
+        "view_own_training",
+        "open_slides",
+        "open_video",
+        "open_recording",
+        "take_test",
+        "view_own_certificate",
+    ],
+    "Plan Appraiser": [
+        "view_own_training",
+        "open_slides",
+        "open_video",
+        "open_recording",
+        "take_test",
+        "view_own_certificate",
+    ],
+}
+
+def require_allowed(role, action):
+    if action not in ROLE_PERMISSIONS.get(role, []):
+        st.error(f"{role} is not allowed to perform: {action}")
+        return False
+    return True
+
+# ============================================================
+# MODULE 3: DATABASE CREATION
+# ============================================================
+
+def create_database(reset=False):
+    if Path(DB_FILE).exists() and not reset:
+        return
+
+    staff = pd.DataFrame([
+        ["STF-ADMIN", "Admin User", "Admin", "Administration", "admin@classsociety.org", "Active"],
+        ["STF-MGMT", "Management User", "Management", "Management", "management@classsociety.org", "Active"],
+        ["STF-TRN-001", "Usama Saleem", "Trainer", "Training Department", "trainer@classsociety.org", "Active"],
+        ["STF-SUR-001", "Muhammad Ali", "Surveyor", "Electrical Survey", "ali@classsociety.org", "Active"],
+        ["STF-SUR-002", "Sara Malik", "Surveyor", "Hull & Machinery Survey", "sara@classsociety.org", "Active"],
+        ["STF-APP-001", "Ahmed Khan", "Plan Appraiser", "Plan Appraisal", "ahmed@classsociety.org", "Active"],
+    ], columns=["Staff_ID", "Name", "Role", "Department", "Email", "Status"])
+
+    trainings = pd.DataFrame(columns=[
+        "Training_ID", "Training_Title", "Category", "Target_Role",
+        "Trainer_ID", "Trainer_Name", "Slides_Link", "Video_Link",
+        "Reference_Link", "Schedule_Date", "Schedule_Time", "Meeting_Link",
+        "Recording_Link", "Passing_Marks", "Status", "Submitted_By_Trainer",
+        "Created_By", "Created_On", "Last_Updated",
+    ])
+
+    records = pd.DataFrame(columns=[
+        "Record_ID", "Staff_ID", "Staff_Name", "Role", "Training_ID",
+        "Training_Title", "Status", "Slides_Opened", "Video_Opened",
+        "Live_Attendance", "Recording_Opened", "Test_Status", "Score",
+        "Passing_Marks", "Certificate_Status", "Certificate_Link",
+        "Due_Date", "Completed_On", "Progress_%", "Remarks", "Last_Updated",
+    ])
+
+    tests = pd.DataFrame(columns=[
+        "Question_ID", "Training_ID", "Question", "Option_A", "Option_B",
+        "Option_C", "Option_D", "Correct_Answer", "Marks",
+    ])
+
+    notifications = pd.DataFrame(columns=[
+        "Notification_ID", "Training_ID", "Staff_ID", "Staff_Name",
+        "Staff_Email", "Subject", "Message", "Status", "Generated_On",
+        "Sent_On", "Generated_By",
+    ])
+
+    certificates = pd.DataFrame(columns=[
+        "Certificate_ID", "Staff_ID", "Staff_Name", "Role", "Training_ID",
+        "Training_Title", "Score", "Issued_On", "Certificate_Link",
+        "Status", "Issued_By",
+    ])
+
+    activity_log = pd.DataFrame(columns=[
+        "Log_ID", "Date_Time", "Activity", "Actor_ID", "Actor_Name",
+        "Actor_Role", "Staff_ID", "Training_ID", "Status", "Remarks",
+    ])
+
+    dashboard = pd.DataFrame(columns=["Metric", "Value"])
+
+    with pd.ExcelWriter(DB_FILE, engine="openpyxl") as writer:
+        staff.to_excel(writer, sheet_name="Staff", index=False)
+        trainings.to_excel(writer, sheet_name="Trainings", index=False)
+        records.to_excel(writer, sheet_name="Training_Records", index=False)
+        tests.to_excel(writer, sheet_name="Tests", index=False)
+        notifications.to_excel(writer, sheet_name="Notifications", index=False)
+        certificates.to_excel(writer, sheet_name="Certificates", index=False)
+        activity_log.to_excel(writer, sheet_name="Activity_Log", index=False)
+        dashboard.to_excel(writer, sheet_name="Dashboard", index=False)
+
+    append_row("Activity_Log", {
+        "Log_ID": make_id("LOG"),
+        "Date_Time": now(),
+        "Activity": "Database Created",
+        "Actor_ID": "",
+        "Actor_Name": "System",
+        "Actor_Role": "System",
+        "Staff_ID": "",
+        "Training_ID": "",
+        "Status": "Success",
+        "Remarks": "Initial Excel database created.",
+    })
+    update_dashboard()
+
+# ============================================================
+# MODULE 4: DASHBOARD AND RECORD STATUS
+# ============================================================
+
+def calculate_progress(record):
+    steps = [
+        record.get("Slides_Opened") == "Yes",
+        record.get("Video_Opened") == "Yes" or record.get("Recording_Opened") == "Yes",
+        record.get("Live_Attendance") in ["Present", "Recording Viewed"],
+        record.get("Test_Status") == "Passed",
+        record.get("Certificate_Status") == "Issued",
+    ]
+    return int((sum(steps) / len(steps)) * 100)
+
+def refresh_training_records():
+    records = read_sheet("Training_Records")
+    if records.empty:
+        update_dashboard()
+        return
+
+    for idx, row in records.iterrows():
+        progress = calculate_progress(row)
+        records.at[idx, "Progress_%"] = progress
+
+        if progress >= 100:
+            records.at[idx, "Status"] = "Completed"
+            if pd.isna(row.get("Completed_On")) or str(row.get("Completed_On")).strip() == "":
+                records.at[idx, "Completed_On"] = today()
+        else:
+            records.at[idx, "Status"] = "Pending"
+
+        records.at[idx, "Last_Updated"] = now()
+
+    save_sheet("Training_Records", records)
+    update_dashboard()
+
+def update_dashboard():
+    staff = read_sheet("Staff")
+    trainings = read_sheet("Trainings")
+    records = read_sheet("Training_Records")
+    certificates = read_sheet("Certificates")
+    logs = read_sheet("Activity_Log")
+
+    completed = 0
+    pending = 0
+    avg_progress = 0
+
+    if not records.empty:
+        completed = len(records[records["Status"] == "Completed"])
+        pending = len(records[records["Status"] != "Completed"])
+        avg_progress = round(records["Progress_%"].fillna(0).mean(), 2)
+
+    dashboard = pd.DataFrame([
+        ["Total Staff", len(staff)],
+        ["Surveyors", len(staff[staff["Role"] == "Surveyor"]) if not staff.empty else 0],
+        ["Plan Appraisers", len(staff[staff["Role"] == "Plan Appraiser"]) if not staff.empty else 0],
+        ["Trainers", len(staff[staff["Role"] == "Trainer"]) if not staff.empty else 0],
+        ["Total Trainings", len(trainings)],
+        ["Completed Training Records", completed],
+        ["Pending Training Records", pending],
+        ["Average Completion %", avg_progress],
+        ["Certificates Issued", len(certificates)],
+        ["Activities Logged", len(logs)],
+        ["Last Updated", now()],
+    ], columns=["Metric", "Value"])
+
+    save_sheet("Dashboard", dashboard)
+
+# ============================================================
+# MODULE 5: BUSINESS LOGIC
+# ============================================================
+
+def generate_meeting_link(training_id):
+    return f"https://teams.microsoft.com/l/meetup-join/{training_id}"
+
+def generate_certificate_link(staff_id, training_id):
+    return f"https://certificate.classsociety.org/{staff_id}/{training_id}"
+
+def get_training(training_id):
+    trainings = read_sheet("Trainings")
+    match = trainings[trainings["Training_ID"] == training_id]
+    if match.empty:
+        return None
+    return match.iloc[0].to_dict()
+
+def generate_notifications(training_id, actor):
+    trainings = read_sheet("Trainings")
+    records = read_sheet("Training_Records")
+    staff = read_sheet("Staff")
+
+    training = trainings[trainings["Training_ID"] == training_id]
+    if training.empty:
+        return
+
+    training = training.iloc[0]
+    assigned = records[records["Training_ID"] == training_id]
+
+    for _, rec in assigned.iterrows():
+        staff_row = staff[staff["Staff_ID"] == rec["Staff_ID"]]
+        if staff_row.empty:
+            continue
+
+        staff_row = staff_row.iloc[0]
+        subject = f"Training Assigned: {training['Training_Title']}"
+        message = (
+            f"Dear {staff_row['Name']},\n\n"
+            f"You have been assigned a training.\n\n"
+            f"Training: {training['Training_Title']}\n"
+            f"Schedule: {training['Schedule_Date']} at {training['Schedule_Time']}\n"
+            f"Meeting Link: {training['Meeting_Link']}\n"
+            f"Slides Link: {training['Slides_Link']}\n"
+            f"Video Link: {training['Video_Link']}\n\n"
+            f"Please complete slides/video/recording and submit the test.\n\n"
+            f"Regards,\nTraining Department"
+        )
+
+        append_row("Notifications", {
+            "Notification_ID": make_id("NOTIF"),
+            "Training_ID": training_id,
+            "Staff_ID": staff_row["Staff_ID"],
+            "Staff_Name": staff_row["Name"],
+            "Staff_Email": staff_row["Email"],
+            "Subject": subject,
+            "Message": message,
+            "Status": "Generated",
+            "Generated_On": now(),
+            "Sent_On": "",
+            "Generated_By": actor["Name"],
+        })
+
+    log_activity(
+        "Notifications Generated",
+        actor_id=actor["Staff_ID"],
+        actor_name=actor["Name"],
+        actor_role=actor["Role"],
+        training_id=training_id,
+        remarks="Emails generated in Excel.",
+    )
+
+def issue_certificate(actor, training_id, score):
+    records = read_sheet("Training_Records")
+    certificates = read_sheet("Certificates")
+
+    mask = (records["Staff_ID"] == actor["Staff_ID"]) & (records["Training_ID"] == training_id)
+    if records[mask].empty:
+        return
+
+    row = records[mask].iloc[0]
+    cert_link = generate_certificate_link(actor["Staff_ID"], training_id)
+
+    records.loc[mask, "Certificate_Status"] = "Issued"
+    records.loc[mask, "Certificate_Link"] = cert_link
+    records.loc[mask, "Remarks"] = "Certificate issued automatically after passing test."
+    records.loc[mask, "Last_Updated"] = now()
+    save_sheet("Training_Records", records)
+
+    exists = certificates[(certificates["Staff_ID"] == actor["Staff_ID"]) & (certificates["Training_ID"] == training_id)]
+    if exists.empty:
+        certificates = pd.concat([certificates, pd.DataFrame([{
+            "Certificate_ID": make_id("CERT"),
+            "Staff_ID": actor["Staff_ID"],
+            "Staff_Name": actor["Name"],
+            "Role": actor["Role"],
+            "Training_ID": training_id,
+            "Training_Title": row["Training_Title"],
+            "Score": score,
+            "Issued_On": today(),
+            "Certificate_Link": cert_link,
+            "Status": "Issued",
+            "Issued_By": "System",
+        }])], ignore_index=True)
+        save_sheet("Certificates", certificates)
+
+    log_activity(
+        "Certificate Issued",
+        actor_id=actor["Staff_ID"],
+        actor_name=actor["Name"],
+        actor_role=actor["Role"],
+        staff_id=actor["Staff_ID"],
+        training_id=training_id,
+        remarks=cert_link,
+    )
+    refresh_training_records()
+
+# ============================================================
+# MODULE 6: LOGIN
+# ============================================================
+
+def login_sidebar():
+    st.sidebar.title("User Login")
+    st.sidebar.caption("Select role/user to open the relevant dashboard and action panel.")
+
+    staff = read_sheet("Staff")
+    if staff.empty:
+        st.sidebar.error("Staff database is empty.")
+        st.stop()
+
+    role_filter = st.sidebar.selectbox(
+        "Filter by Role",
+        ["All", "Management", "Admin", "Trainer", "Surveyor", "Plan Appraiser"]
+    )
+
+    view_staff = staff.copy()
+    if role_filter != "All":
+        view_staff = view_staff[view_staff["Role"] == role_filter]
+
+    if view_staff.empty:
+        st.sidebar.warning("No user found for this role.")
+        st.stop()
+
+    view_staff["Display"] = view_staff["Name"].astype(str) + " — " + view_staff["Role"].astype(str)
+    selected = st.sidebar.selectbox("Select User", view_staff["Display"].tolist())
+    actor = view_staff[view_staff["Display"] == selected].iloc[0].to_dict()
+
+    st.sidebar.success(f"Logged in as: {actor['Role']}")
+    st.sidebar.caption(actor["Email"])
+    return actor
+
+
+
+# ============================================================
+# MODULE 6A: FRONT-END HOME / ACTION LANDING
+# ============================================================
+
+def frontend_home(actor):
+    st.header("Role Action Center")
+    st.caption("This page shows what the logged-in person can do. Use the left menu to open the working panel.")
+
+    role = actor["Role"]
+
+    if role == "Management":
+        steps = [
+            "View overall training dashboard.",
+            "Review pending/completed training status.",
+            "Monitor certificates issued.",
+            "Review notifications and activity log.",
+            "Download updated Excel database."
+        ]
+    elif role == "Admin":
+        steps = [
+            "Add staff and assign roles.",
+            "Create training and assign trainer.",
+            "Assign surveyors or plan appraisers to training.",
+            "Monitor all training records.",
+            "Download updated Excel database."
+        ]
+    elif role == "Trainer":
+        steps = [
+            "Open assigned training.",
+            "Upload/add slides link, video link and reference material.",
+            "Set passing marks.",
+            "Submit schedule and meeting link.",
+            "Generate notifications/emails for trainees.",
+            "Mark attendance.",
+            "Upload recording link after training.",
+            "Review trainee progress and results."
+        ]
+    elif role in ["Surveyor", "Plan Appraiser"]:
+        steps = [
+            "Open assigned training.",
+            "Open slides and mark complete.",
+            "Open video or recording and mark complete.",
+            "Submit test score.",
+            "Receive certificate automatically after passing."
+        ]
+    else:
+        steps = ["No workflow assigned."]
+
+    action_panel("Your Workflow", "Follow these steps according to your assigned role.")
+    workflow_box(steps)
+
+    st.subheader("Quick Status")
+    records = read_sheet("Training_Records")
+    trainings = read_sheet("Trainings")
+    certificates = read_sheet("Certificates")
+
+    if role in ["Surveyor", "Plan Appraiser"]:
+        my_records = records[records["Staff_ID"] == actor["Staff_ID"]] if not records.empty else pd.DataFrame()
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("My Trainings", len(my_records))
+        c2.metric("Pending", len(my_records[my_records["Status"] != "Completed"]) if not my_records.empty else 0)
+        c3.metric("Completed", len(my_records[my_records["Status"] == "Completed"]) if not my_records.empty else 0)
+        c4.metric("Certificates", len(certificates[certificates["Staff_ID"] == actor["Staff_ID"]]) if not certificates.empty else 0)
+        if not my_records.empty:
+            show_df(my_records)
+    elif role == "Trainer":
+        my_trainings = trainings[trainings["Trainer_ID"] == actor["Staff_ID"]] if not trainings.empty else pd.DataFrame()
+        training_ids = my_trainings["Training_ID"].tolist() if not my_trainings.empty else []
+        my_records = records[records["Training_ID"].isin(training_ids)] if not records.empty else pd.DataFrame()
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Assigned Trainings", len(my_trainings))
+        c2.metric("Trainees", len(my_records))
+        c3.metric("Pending Trainees", len(my_records[my_records["Status"] != "Completed"]) if not my_records.empty else 0)
+        c4.metric("Completed Trainees", len(my_records[my_records["Status"] == "Completed"]) if not my_records.empty else 0)
+        if not my_trainings.empty:
+            show_df(my_trainings)
+    else:
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Trainings", len(trainings))
+        c2.metric("Training Records", len(records))
+        c3.metric("Pending", len(records[records["Status"] != "Completed"]) if not records.empty else 0)
+        c4.metric("Certificates", len(certificates))
+
+# ============================================================
+# MODULE 7A: ROLE-BASED DASHBOARD
+# ============================================================
+
+def role_dashboard(actor):
+    role = actor["Role"]
+    st.header(f"{role} Dashboard")
+    st.caption("This dashboard shows only the work and information relevant to the logged-in role.")
+
+    dashboard = read_sheet("Dashboard")
+    trainings = read_sheet("Trainings")
+    records = read_sheet("Training_Records")
+    staff = read_sheet("Staff")
+    certificates = read_sheet("Certificates")
+    notifications = read_sheet("Notifications")
+
+    if role in ["Management", "Admin"]:
+        c1, c2, c3, c4 = st.columns(4)
+        total_staff = len(staff)
+        total_trainings = len(trainings)
+        pending = len(records[records["Status"] != "Completed"]) if not records.empty else 0
+        certs = len(certificates)
+
+        c1.metric("Total Staff", total_staff)
+        c2.metric("Total Trainings", total_trainings)
+        c3.metric("Pending Records", pending)
+        c4.metric("Certificates Issued", certs)
+
+        st.subheader("Overall Training Status")
+        if not records.empty:
+            status_summary = records.groupby(["Role", "Status"]).size().reset_index(name="Count")
+            show_df(status_summary)
+        else:
+            st.info("No training records yet.")
+
+        st.subheader("Management / Admin Actions")
+        if role == "Admin":
+            st.markdown("""
+            **Your main actions:**
+            1. Add staff and assign roles  
+            2. Create training and assign trainer  
+            3. Assign surveyors / plan appraisers to training  
+            4. Monitor all training records  
+            5. Download the updated Excel database  
+            """)
+        else:
+            st.markdown("""
+            **Your main actions:**
+            1. View training progress  
+            2. View pending and completed trainings  
+            3. View certificates  
+            4. View notifications and activity log  
+            5. Download the updated Excel database  
+            """)
+
+        st.subheader("Recent Activity")
+        logs = read_sheet("Activity_Log")
+        if not logs.empty:
+            show_df(logs.tail(10))
+        else:
+            st.info("No activity yet.")
+
+    elif role == "Trainer":
+        my_trainings = trainings[trainings["Trainer_ID"] == actor["Staff_ID"]] if not trainings.empty else pd.DataFrame()
+        my_training_ids = my_trainings["Training_ID"].tolist() if not my_trainings.empty else []
+        my_records = records[records["Training_ID"].isin(my_training_ids)] if not records.empty else pd.DataFrame()
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Assigned Trainings", len(my_trainings))
+        c2.metric("Assigned Trainees", len(my_records))
+        c3.metric("Pending Trainees", len(my_records[my_records["Status"] != "Completed"]) if not my_records.empty else 0)
+        c4.metric("Completed Trainees", len(my_records[my_records["Status"] == "Completed"]) if not my_records.empty else 0)
+
+        st.subheader("Trainer Pending Work")
+        pending_material = my_trainings[my_trainings["Submitted_By_Trainer"] != "Yes"] if not my_trainings.empty else pd.DataFrame()
+        pending_schedule = my_trainings[my_trainings["Status"].isin(["Draft", "Material Submitted"])] if not my_trainings.empty else pd.DataFrame()
+
+        if not pending_material.empty:
+            st.warning("Training material pending submission.")
+            show_df(pending_material[["Training_ID", "Training_Title", "Target_Role", "Status"]])
+        else:
+            st.success("No pending material submission.")
+
+        if not pending_schedule.empty:
+            st.warning("Schedule / notification may be pending.")
+            show_df(pending_schedule[["Training_ID", "Training_Title", "Status", "Schedule_Date", "Schedule_Time"]])
+        else:
+            st.success("No pending schedule work.")
+
+        st.subheader("Your Assigned Trainings")
+        show_df(my_trainings)
+
+        st.markdown("""
+        **Your workflow:**
+        1. Open Trainer Panel  
+        2. Add slides/video/reference links  
+        3. Set passing marks  
+        4. Submit schedule and meeting link  
+        5. Generate notifications  
+        6. Mark attendance  
+        7. Upload recording link after training  
+        8. Review trainee results  
+        """)
+
+    elif role in ["Surveyor", "Plan Appraiser"]:
+        my_records = records[records["Staff_ID"] == actor["Staff_ID"]] if not records.empty else pd.DataFrame()
+
+        completed = len(my_records[my_records["Status"] == "Completed"]) if not my_records.empty else 0
+        pending = len(my_records[my_records["Status"] != "Completed"]) if not my_records.empty else 0
+        avg_progress = round(my_records["Progress_%"].fillna(0).mean(), 2) if not my_records.empty else 0
+        my_certs = certificates[certificates["Staff_ID"] == actor["Staff_ID"]] if not certificates.empty else pd.DataFrame()
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("My Trainings", len(my_records))
+        c2.metric("Pending", pending)
+        c3.metric("Completed", completed)
+        c4.metric("My Certificates", len(my_certs))
+
+        st.subheader("My Pending Trainings")
+        pending_records = my_records[my_records["Status"] != "Completed"] if not my_records.empty else pd.DataFrame()
+        if not pending_records.empty:
+            show_df(pending_records[[
+                "Training_ID", "Training_Title", "Slides_Opened", "Video_Opened",
+                "Live_Attendance", "Recording_Opened", "Test_Status",
+                "Certificate_Status", "Progress_%", "Due_Date"
+            ]])
+        else:
+            st.success("No pending training.")
+
+        st.subheader("My Completed Trainings")
+        completed_records = my_records[my_records["Status"] == "Completed"] if not my_records.empty else pd.DataFrame()
+        if not completed_records.empty:
+            show_df(completed_records)
+        else:
+            st.info("No completed training yet.")
+
+        st.markdown("""
+        **Your workflow:**
+        1. Open assigned training  
+        2. Open slides and mark complete  
+        3. Open video or recording and mark complete  
+        4. Submit test score  
+        5. Certificate is issued automatically if you pass  
+        """)
+
+    else:
+        st.info("No dashboard available for this role.")
+
+# ============================================================
+# MODULE 7: MANAGEMENT VIEW
+# ============================================================
+
+def management_view(actor):
+    st.header("Management Dashboard")
+
+    dashboard = read_sheet("Dashboard")
+    if not dashboard.empty:
+        cols = st.columns(4)
+        for idx, row in dashboard.iterrows():
+            with cols[idx % 4]:
+                st.metric(str(row["Metric"]), str(row["Value"]))
+
+    st.subheader("All Training Records")
+    show_df(read_sheet("Training_Records"))
+
+    st.subheader("Certificates")
+    show_df(read_sheet("Certificates"))
+
+    st.subheader("Notifications")
+    show_df(read_sheet("Notifications"))
+
+    st.subheader("Activity Log")
+    show_df(read_sheet("Activity_Log"))
+
+# ============================================================
+# MODULE 8: ADMIN VIEW
+# ============================================================
+
+def admin_view(actor):
+    st.header("Admin Panel")
+    action_panel("Admin Working Area", "Create users, assign roles, create trainings, assign trainers and assign trainees. Every action updates the Excel database.")
+
+    tab1, tab2, tab3, tab4 = st.tabs(["Staff & Roles", "Create Training", "Assign Trainees", "All Records"])
+
+    with tab1:
+        st.subheader("Staff & Role Assignment")
+        show_df(read_sheet("Staff"))
+
+        with st.form("staff_form"):
+            staff_id = st.text_input("Staff ID", value=make_id("STF"))
+            name = st.text_input("Name")
+            role = st.selectbox("Role", ["Admin", "Management", "Trainer", "Surveyor", "Plan Appraiser"])
+            department = st.text_input("Department")
+            email = st.text_input("Email")
+            save_btn = st.form_submit_button("Save Staff")
+
+            if save_btn:
+                if not require_allowed(actor["Role"], "manage_staff"):
+                    return
+
+                staff = read_sheet("Staff")
+                new_row = {
+                    "Staff_ID": staff_id,
+                    "Name": name,
+                    "Role": role,
+                    "Department": department,
+                    "Email": email,
+                    "Status": "Active",
+                }
+
+                existing = staff[staff["Staff_ID"] == staff_id]
+                if existing.empty:
+                    staff = pd.concat([staff, pd.DataFrame([new_row])], ignore_index=True)
+                    activity = "Staff Added"
+                else:
+                    idx = existing.index[0]
+                    for key, value in new_row.items():
+                        staff.at[idx, key] = value
+                    activity = "Staff Updated"
+
+                save_sheet("Staff", staff)
+                log_activity(activity, actor["Staff_ID"], actor["Name"], actor["Role"], staff_id=staff_id, remarks=f"{name} as {role}")
+                st.success("Staff saved.")
+                st.rerun()
+
+    with tab2:
+        st.subheader("Create Training & Assign Trainer")
+
+        staff = read_sheet("Staff")
+        trainers = staff[staff["Role"] == "Trainer"]
+
+        if trainers.empty:
+            st.warning("Please add a Trainer first.")
+            return
+
+        with st.form("training_form"):
+            training_id = st.text_input("Training ID", value=make_id("TRN"))
+            title = st.text_input("Training Title")
+            category = st.selectbox(
+                "Category",
+                ["Basic Survey", "Electrical Survey", "Hull Survey", "Machinery Survey", "Plan Appraisal", "Statutory Survey", "Report Writing"],
+            )
+            target_role = st.selectbox("Target Role", ["Surveyor", "Plan Appraiser"])
+            trainer_display = st.selectbox("Trainer", trainers["Name"] + " — " + trainers["Staff_ID"])
+            passing_marks = st.number_input("Passing Marks", 0, 100, 75)
+            create_btn = st.form_submit_button("Create Training")
+
+            if create_btn:
+                if not require_allowed(actor["Role"], "create_training"):
+                    return
+
+                trainer_name, trainer_id = trainer_display.split(" — ")
+                trainings = read_sheet("Trainings")
+
+                new_training = {
+                    "Training_ID": training_id,
+                    "Training_Title": title,
+                    "Category": category,
+                    "Target_Role": target_role,
+                    "Trainer_ID": trainer_id,
+                    "Trainer_Name": trainer_name,
+                    "Slides_Link": "",
+                    "Video_Link": "",
+                    "Reference_Link": "",
+                    "Schedule_Date": "",
+                    "Schedule_Time": "",
+                    "Meeting_Link": "",
+                    "Recording_Link": "",
+                    "Passing_Marks": passing_marks,
+                    "Status": "Draft",
+                    "Submitted_By_Trainer": "No",
+                    "Created_By": actor["Name"],
+                    "Created_On": now(),
+                    "Last_Updated": now(),
+                }
+
+                trainings = pd.concat([trainings, pd.DataFrame([new_training])], ignore_index=True)
+                save_sheet("Trainings", trainings)
+
+                log_activity("Training Created", actor["Staff_ID"], actor["Name"], actor["Role"], training_id=training_id, remarks=f"Trainer: {trainer_name}")
+                st.success("Training created.")
+                st.rerun()
+
+    with tab3:
+        st.subheader("Assign Surveyor / Plan Appraiser")
+
+        staff = read_sheet("Staff")
+        trainings = read_sheet("Trainings")
+
+        if trainings.empty:
+            st.warning("No training available.")
+            return
+
+        training_display = st.selectbox("Training", trainings["Training_Title"] + " — " + trainings["Training_ID"])
+        training_id = training_display.split(" — ")[-1]
+        training = trainings[trainings["Training_ID"] == training_id].iloc[0]
+
+        eligible = staff[staff["Role"] == training["Target_Role"]]
+        trainee_options = eligible["Name"] + " — " + eligible["Staff_ID"]
+        selected_trainees = st.multiselect("Select Trainees", trainee_options)
+        due_date = st.date_input("Due Date")
+
+        if st.button("Assign Trainees"):
+            if not require_allowed(actor["Role"], "assign_trainees"):
+                return
+
+            records = read_sheet("Training_Records")
+
+            for item in selected_trainees:
+                staff_name, staff_id = item.split(" — ")
+                staff_row = staff[staff["Staff_ID"] == staff_id].iloc[0]
+
+                exists = records[(records["Staff_ID"] == staff_id) & (records["Training_ID"] == training_id)]
+                if not exists.empty:
+                    continue
+
+                new_record = {
+                    "Record_ID": make_id("REC"),
+                    "Staff_ID": staff_id,
+                    "Staff_Name": staff_name,
+                    "Role": staff_row["Role"],
+                    "Training_ID": training_id,
+                    "Training_Title": training["Training_Title"],
+                    "Status": "Pending",
+                    "Slides_Opened": "No",
+                    "Video_Opened": "No",
+                    "Live_Attendance": "Not Marked",
+                    "Recording_Opened": "No",
+                    "Test_Status": "Not Attempted",
+                    "Score": "",
+                    "Passing_Marks": training["Passing_Marks"],
+                    "Certificate_Status": "Not Issued",
+                    "Certificate_Link": "",
+                    "Due_Date": str(due_date),
+                    "Completed_On": "",
+                    "Progress_%": 0,
+                    "Remarks": "Assigned by Admin.",
+                    "Last_Updated": now(),
+                }
+
+                records = pd.concat([records, pd.DataFrame([new_record])], ignore_index=True)
+                log_activity("Training Assigned", actor["Staff_ID"], actor["Name"], actor["Role"], staff_id=staff_id, training_id=training_id)
+
+            save_sheet("Training_Records", records)
+            refresh_training_records()
+            st.success("Trainees assigned.")
+            st.rerun()
+
+    with tab4:
+        show_df(read_sheet("Training_Records"))
+
+# ============================================================
+# MODULE 9: TRAINER VIEW
+# ============================================================
+
+def trainer_view(actor):
+    st.header("Trainer Panel")
+    action_panel("Trainer Working Area", "Submit training materials, schedule sessions, generate notifications, mark attendance and save recordings.")
+
+    trainings = read_sheet("Trainings")
+    my_trainings = trainings[trainings["Trainer_ID"] == actor["Staff_ID"]]
+
+    if my_trainings.empty:
+        st.warning("No training assigned to this trainer.")
+        return
+
+    training_display = st.selectbox("Assigned Training", my_trainings["Training_Title"] + " — " + my_trainings["Training_ID"])
+    training_id = training_display.split(" — ")[-1]
+    training = my_trainings[my_trainings["Training_ID"] == training_id].iloc[0]
+
+    tab1, tab2, tab3, tab4 = st.tabs(["Training Material", "Schedule & Notify", "Attendance & Recording", "Results"])
+
+    with tab1:
+        st.subheader("Update Training Material")
+        with st.form("material_form"):
+            slides = st.text_input("Slides Link", value=str(training.get("Slides_Link", "")))
+            video = st.text_input("Video Link", value=str(training.get("Video_Link", "")))
+            reference = st.text_input("Reference Link", value=str(training.get("Reference_Link", "")))
+            passing = st.number_input("Passing Marks", 0, 100, int(training.get("Passing_Marks", 75)))
+            submit = st.form_submit_button("Submit Material")
+
+            if submit:
+                if not require_allowed(actor["Role"], "update_training_fields"):
+                    return
+
+                all_trainings = read_sheet("Trainings")
+                idx = all_trainings[all_trainings["Training_ID"] == training_id].index[0]
+
+                all_trainings.at[idx, "Slides_Link"] = slides
+                all_trainings.at[idx, "Video_Link"] = video
+                all_trainings.at[idx, "Reference_Link"] = reference
+                all_trainings.at[idx, "Passing_Marks"] = passing
+                all_trainings.at[idx, "Submitted_By_Trainer"] = "Yes"
+                all_trainings.at[idx, "Status"] = "Material Submitted"
+                all_trainings.at[idx, "Last_Updated"] = now()
+                save_sheet("Trainings", all_trainings)
+
+                records = read_sheet("Training_Records")
+                records.loc[records["Training_ID"] == training_id, "Passing_Marks"] = passing
+                save_sheet("Training_Records", records)
+
+                log_activity("Material Submitted", actor["Staff_ID"], actor["Name"], actor["Role"], training_id=training_id)
+                st.success("Training material saved.")
+                st.rerun()
+
+    with tab2:
+        st.subheader("Schedule & Notify")
+        schedule_date = st.date_input("Schedule Date")
+        schedule_time = st.text_input("Schedule Time", value="10:00 AM")
+        meeting_link = st.text_input("Meeting Link", value=generate_meeting_link(training_id))
+
+        if st.button("Submit Schedule & Generate Email Notifications"):
+            if not require_allowed(actor["Role"], "submit_training_schedule"):
+                return
+
+            all_trainings = read_sheet("Trainings")
+            idx = all_trainings[all_trainings["Training_ID"] == training_id].index[0]
+
+            all_trainings.at[idx, "Schedule_Date"] = str(schedule_date)
+            all_trainings.at[idx, "Schedule_Time"] = schedule_time
+            all_trainings.at[idx, "Meeting_Link"] = meeting_link
+            all_trainings.at[idx, "Status"] = "Scheduled"
+            all_trainings.at[idx, "Last_Updated"] = now()
+            save_sheet("Trainings", all_trainings)
+
+            generate_notifications(training_id, actor)
+            log_activity("Schedule Submitted", actor["Staff_ID"], actor["Name"], actor["Role"], training_id=training_id)
+            st.success("Schedule saved and email notifications generated in Excel.")
+            st.rerun()
+
+        show_df(read_sheet("Notifications"))
+
+    with tab3:
+        st.subheader("Attendance & Recording")
+
+        records = read_sheet("Training_Records")
+        training_records = records[records["Training_ID"] == training_id]
+
+        if training_records.empty:
+            st.warning("No trainees assigned.")
+        else:
+            show_df(training_records[["Staff_ID", "Staff_Name", "Live_Attendance", "Status", "Progress_%"]])
+
+            trainee_display = st.selectbox("Trainee", training_records["Staff_Name"] + " — " + training_records["Staff_ID"])
+            selected_staff_id = trainee_display.split(" — ")[-1]
+            attendance = st.selectbox("Attendance", ["Present", "Absent"])
+
+            if st.button("Mark Attendance"):
+                if not require_allowed(actor["Role"], "mark_attendance"):
+                    return
+
+                records = read_sheet("Training_Records")
+                mask = (records["Training_ID"] == training_id) & (records["Staff_ID"] == selected_staff_id)
+                records.loc[mask, "Live_Attendance"] = attendance
+                records.loc[mask, "Remarks"] = f"Attendance marked: {attendance}"
+                records.loc[mask, "Last_Updated"] = now()
+                save_sheet("Training_Records", records)
+
+                log_activity("Attendance Marked", actor["Staff_ID"], actor["Name"], actor["Role"], staff_id=selected_staff_id, training_id=training_id, remarks=attendance)
+                refresh_training_records()
+                st.success("Attendance saved.")
+                st.rerun()
+
+        recording_link = st.text_input("Recording Link")
+
+        if st.button("Save Recording"):
+            if not require_allowed(actor["Role"], "upload_recording"):
+                return
+
+            all_trainings = read_sheet("Trainings")
+            idx = all_trainings[all_trainings["Training_ID"] == training_id].index[0]
+            all_trainings.at[idx, "Recording_Link"] = recording_link
+            all_trainings.at[idx, "Status"] = "Recorded"
+            all_trainings.at[idx, "Last_Updated"] = now()
+            save_sheet("Trainings", all_trainings)
+
+            log_activity("Recording Saved", actor["Staff_ID"], actor["Name"], actor["Role"], training_id=training_id, remarks=recording_link)
+            st.success("Recording link saved.")
+            st.rerun()
+
+    with tab4:
+        st.subheader("Results")
+        records = read_sheet("Training_Records")
+        show_df(records[records["Training_ID"] == training_id])
+
+# ============================================================
+# MODULE 10: TRAINEE VIEW
+# ============================================================
+
+def trainee_view(actor):
+    st.header(f"{actor['Role']} Training Portal")
+    action_panel("Trainee Working Area", "Complete assigned training activities, open materials, submit test and receive certificate after passing.")
+
+    records = read_sheet("Training_Records")
+    my_records = records[records["Staff_ID"] == actor["Staff_ID"]]
+
+    if my_records.empty:
+        st.warning("No training assigned yet.")
+        return
+
+    training_display = st.selectbox("My Training", my_records["Training_Title"] + " — " + my_records["Training_ID"])
+    training_id = training_display.split(" — ")[-1]
+
+    record = my_records[my_records["Training_ID"] == training_id].iloc[0]
+    training = get_training(training_id)
+
+    st.subheader("My Status")
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Progress", f"{record['Progress_%']}%")
+    c2.metric("Slides", record["Slides_Opened"])
+    c3.metric("Video", record["Video_Opened"])
+    c4.metric("Test", record["Test_Status"])
+    c5.metric("Certificate", record["Certificate_Status"])
+
+    st.subheader("Training Material")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.write("Slides")
+        st.code(training.get("Slides_Link", ""))
+        if st.button("Open Slides / Mark Complete"):
+            trainee_update(actor, training_id, "Slides_Opened", "Yes", "Slides opened.")
+
+    with col2:
+        st.write("Video")
+        st.code(training.get("Video_Link", ""))
+        if st.button("Open Video / Mark Complete"):
+            trainee_update(actor, training_id, "Video_Opened", "Yes", "Video opened.")
+
+    with col3:
+        st.write("Recording")
+        st.code(training.get("Recording_Link", ""))
+        if st.button("Open Recording / Mark Complete"):
+            records = read_sheet("Training_Records")
+            mask = (records["Staff_ID"] == actor["Staff_ID"]) & (records["Training_ID"] == training_id)
+            records.loc[mask, "Recording_Opened"] = "Yes"
+            records.loc[mask, "Video_Opened"] = "Yes"
+            records.loc[mask, "Live_Attendance"] = "Recording Viewed"
+            records.loc[mask, "Remarks"] = "Recording viewed."
+            records.loc[mask, "Last_Updated"] = now()
+            save_sheet("Training_Records", records)
+
+            log_activity("Recording Viewed", actor["Staff_ID"], actor["Name"], actor["Role"], staff_id=actor["Staff_ID"], training_id=training_id)
+            refresh_training_records()
+            st.success("Recording marked complete.")
+            st.rerun()
+
+    st.subheader("Test")
+    passing_marks = int(record["Passing_Marks"]) if str(record["Passing_Marks"]).strip() else 75
+    score = st.number_input("Score", 0, 100, 75)
+
+    if st.button("Submit Test"):
+        records = read_sheet("Training_Records")
+        mask = (records["Staff_ID"] == actor["Staff_ID"]) & (records["Training_ID"] == training_id)
+
+        result = "Passed" if score >= passing_marks else "Failed"
+        records.loc[mask, "Score"] = score
+        records.loc[mask, "Test_Status"] = result
+        records.loc[mask, "Remarks"] = f"Test submitted. Score: {score}"
+        records.loc[mask, "Last_Updated"] = now()
+        save_sheet("Training_Records", records)
+
+        log_activity("Test Submitted", actor["Staff_ID"], actor["Name"], actor["Role"], staff_id=actor["Staff_ID"], training_id=training_id, remarks=result)
+        refresh_training_records()
+
+        if result == "Passed":
+            issue_certificate(actor, training_id, score)
+            st.success("Passed. Certificate issued.")
+        else:
+            st.error("Failed. Certificate not issued.")
+
+        st.rerun()
+
+    st.subheader("My Complete Record")
+    records = read_sheet("Training_Records")
+    show_df(records[records["Staff_ID"] == actor["Staff_ID"]])
+
+def trainee_update(actor, training_id, field, value, remarks):
+    records = read_sheet("Training_Records")
+    mask = (records["Staff_ID"] == actor["Staff_ID"]) & (records["Training_ID"] == training_id)
+
+    records.loc[mask, field] = value
+    records.loc[mask, "Remarks"] = remarks
+    records.loc[mask, "Last_Updated"] = now()
+    save_sheet("Training_Records", records)
+
+    log_activity(
+        field.replace("_", " "),
+        actor["Staff_ID"],
+        actor["Name"],
+        actor["Role"],
+        staff_id=actor["Staff_ID"],
+        training_id=training_id,
+        remarks=remarks,
+    )
+    refresh_training_records()
+    st.success("Activity updated.")
+    st.rerun()
+
+# ============================================================
+# MODULE 11: NOTIFICATION VIEW
+# ============================================================
+
+def notification_view(actor):
+    st.header("Notifications / Email Records")
+    show_df(read_sheet("Notifications"))
+    st.info("This version generates email messages in Excel. Real SMTP email sending can be added later.")
+
+# ============================================================
+# MODULE 12: MAIN APP
+# ============================================================
+
+def main():
+    st.set_page_config(page_title="Classification Society Training Platform", layout="wide")
+
+    if not Path(DB_FILE).exists():
+        create_database(reset=True)
+
+    apply_frontend_theme()
+    app_header()
+
+    actor = login_sidebar()
+    role_welcome_card(actor)
+
+    st.sidebar.divider()
+    if st.sidebar.button("Reset Excel Database"):
+        create_database(reset=True)
+        st.sidebar.success("Database recreated.")
+        st.rerun()
+
+    download_excel_button()
+
+    role = actor["Role"]
+
+    if role == "Management":
+        page = st.sidebar.radio("Menu", ["Home", "Role Dashboard", "Dashboard", "Notifications"])
+        if page == "Home":
+            frontend_home(actor)
+        elif page == "Role Dashboard":
+            role_dashboard(actor)
+        elif page == "Dashboard":
+            management_view(actor)
+        else:
+            notification_view(actor)
+
+    elif role == "Admin":
+        page = st.sidebar.radio("Menu", ["Home", "Role Dashboard", "Admin Panel", "Management View", "Notifications"])
+        if page == "Home":
+            frontend_home(actor)
+        elif page == "Role Dashboard":
+            role_dashboard(actor)
+        elif page == "Admin Panel":
+            admin_view(actor)
+        elif page == "Management View":
+            management_view(actor)
+        else:
+            notification_view(actor)
+
+    elif role == "Trainer":
+        page = st.sidebar.radio("Menu", ["Home", "Role Dashboard", "Trainer Panel", "Notifications"])
+        if page == "Home":
+            frontend_home(actor)
+        elif page == "Role Dashboard":
+            role_dashboard(actor)
+        elif page == "Trainer Panel":
+            trainer_view(actor)
+        else:
+            notification_view(actor)
+
+    elif role in ["Surveyor", "Plan Appraiser"]:
+        page = st.sidebar.radio("Menu", ["Home", "Role Dashboard", "Training Portal"])
+        if page == "Home":
+            frontend_home(actor)
+        elif page == "Role Dashboard":
+            role_dashboard(actor)
+        else:
+            trainee_view(actor)
+
+    else:
+        st.error("Unknown role.")
+
+    st.divider()
+    with st.expander("Dashboard Sheet"):
+        show_df(read_sheet("Dashboard"))
+
+    with st.expander("Activity Log Sheet"):
+        show_df(read_sheet("Activity_Log"))
+
+if __name__ == "__main__":
+    main()
