@@ -51,6 +51,27 @@ def make_id(prefix):
 def file_exists():
     return Path(DB_FILE).exists()
 
+# Safe session-state helpers (mirrors app.py) to avoid StreamlitAPIException
+def safe_session_set(key, value):
+    try:
+        if key not in st.session_state:
+            st.session_state[key] = value
+    except Exception:
+        try:
+            st.session_state.update({key: value})
+        except Exception:
+            pass
+
+def safe_session_update(d: dict):
+    try:
+        st.session_state.update(d)
+    except Exception:
+        for k, v in d.items():
+            try:
+                st.session_state[k] = v
+            except Exception:
+                pass
+
 def read_sheet(sheet_name):
     try:
         return pd.read_excel(DB_FILE, sheet_name=sheet_name)
@@ -58,6 +79,11 @@ def read_sheet(sheet_name):
         return pd.DataFrame()
 
 def save_sheet(sheet_name, df):
+    """Save the given DataFrame to the Excel database.
+
+    If the database file already exists, replace the sheet with the same name.
+    Otherwise, create a new workbook and write the sheet.
+    """
     if Path(DB_FILE).exists():
         with pd.ExcelWriter(DB_FILE, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
             df.to_excel(writer, sheet_name=sheet_name, index=False)
@@ -234,12 +260,12 @@ def create_database(reset=False):
         return
 
     staff = pd.DataFrame([
-        ["STF-ADMIN", "Admin User", "Admin", "Administration", "admin@classsociety.org", "Active"],
-        ["STF-MGMT", "Management User", "Management", "Management", "management@classsociety.org", "Active"],
-        ["STF-TRN-001", "Usama Saleem", "Trainer", "Training Department", "trainer@classsociety.org", "Active"],
-        ["STF-SUR-001", "Muhammad Ali", "Surveyor", "Electrical Survey", "ali@classsociety.org", "Active"],
-        ["STF-SUR-002", "Sara Malik", "Surveyor", "Hull & Machinery Survey", "sara@classsociety.org", "Active"],
-        ["STF-APP-001", "Ahmed Khan", "Plan Appraiser", "Plan Appraisal", "ahmed@classsociety.org", "Active"],
+        ["STF-ADMIN", "Admin User", "Admin", "Administration", "admin@psbureau.org", "Active"],
+        ["STF-MGMT", "Management User", "Management", "Management", "management@psbureau.org", "Active"],
+        ["STF-TRN-001", "Usama Saleem", "Trainer", "Training Department", "trainer@psbureau.org", "Active"],
+        ["STF-SUR-001", "Muhammad Ali", "Surveyor", "Electrical Survey", "ali@psbureau.org", "Active"],
+        ["STF-SUR-002", "Sara Malik", "Surveyor", "Hull & Machinery Survey", "sara@psbureau.org", "Active"],
+        ["STF-APP-001", "Ahmed Khan", "Plan Appraiser", "Plan Appraisal", "ahmed@psbureau.org", "Active"],
     ], columns=["Staff_ID", "Name", "Role", "Department", "Email", "Status"])
 
     trainings = pd.DataFrame(columns=[
@@ -371,7 +397,7 @@ def generate_meeting_link(training_id):
     return f"https://teams.microsoft.com/l/meetup-join/{training_id}"
 
 def generate_certificate_link(staff_id, training_id):
-    return f"https://certificate.classsociety.org/{staff_id}/{training_id}"
+    return f"https://certificate.psbureau.org/{staff_id}/{training_id}"
 
 def get_training_by_id(training_id):
     trainings = read_sheet("Trainings")
@@ -487,7 +513,10 @@ def login_sidebar():
     selected = st.sidebar.selectbox("Select User", staff["Display"].tolist())
     row = staff[staff["Display"] == selected].iloc[0].to_dict()
 
-    st.session_state["actor"] = row
+    try:
+        safe_session_update({"actor": row})
+    except Exception:
+        pass
 
     st.sidebar.success(f"Logged in as: {row['Role']}")
     st.sidebar.caption(row["Email"])
@@ -508,7 +537,7 @@ def show_table(title, df):
     if df.empty:
         st.info("No records available.")
     else:
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width="stretch")
 
 # ============================================================
 # MODULE 7: MANAGEMENT VIEW
@@ -1099,11 +1128,11 @@ def main():
     st.divider()
     st.subheader("Excel Database Preview")
     with st.expander("Dashboard"):
-        st.dataframe(read_sheet("Dashboard"), use_container_width=True)
+        st.dataframe(read_sheet("Dashboard"), width="stretch")
     with st.expander("Activity Log"):
-        st.dataframe(read_sheet("Activity_Log"), use_container_width=True)
+        st.dataframe(read_sheet("Activity_Log"), width="stretch")
     with st.expander("Role Permissions"):
-        st.dataframe(read_sheet("Role_Permissions"), use_container_width=True)
+        st.dataframe(read_sheet("Role_Permissions"), width="stretch")
 
 if __name__ == "__main__":
     main()
