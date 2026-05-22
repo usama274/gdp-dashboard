@@ -189,12 +189,12 @@ def create_database(reset=False):
         return
 
     staff = pd.DataFrame([
-        ["STF-ADMIN", "Admin User", "Admin", "Administration", "admin@classsociety.org", "Active"],
-        ["STF-MGMT", "Management User", "Management", "Management", "management@classsociety.org", "Active"],
-        ["STF-TRN-001", "Usama Saleem", "Trainer", "Training Department", "trainer@classsociety.org", "Active"],
-        ["STF-SUR-001", "Muhammad Ali", "Surveyor", "Electrical Survey", "ali@classsociety.org", "Active"],
-        ["STF-SUR-002", "Sara Malik", "Surveyor", "Hull & Machinery Survey", "sara@classsociety.org", "Active"],
-        ["STF-APP-001", "Ahmed Khan", "Plan Appraiser", "Plan Appraisal", "ahmed@classsociety.org", "Active"],
+        ["STF-ADMIN", "Admin User", "Admin", "Administration", "admin@psbureau.org", "Active"],
+        ["STF-MGMT", "Management User", "Management", "Management", "management@psbureau.org", "Active"],
+        ["STF-TRN-001", "Usama Saleem", "Trainer", "Training Department", "trainer@psbureau.org", "Active"],
+        ["STF-SUR-001", "Muhammad Ali", "Surveyor", "Electrical Survey", "ali@psbureau.org", "Active"],
+        ["STF-SUR-002", "Sara Malik", "Surveyor", "Hull & Machinery Survey", "sara@psbureau.org", "Active"],
+        ["STF-APP-001", "Ahmed Khan", "Plan Appraiser", "Plan Appraisal", "ahmed@psbureau.org", "Active"],
     ], columns=["Staff_ID", "Name", "Role", "Department", "Email", "Status"])
 
     trainings = pd.DataFrame(columns=[
@@ -337,7 +337,7 @@ def generate_meeting_link(training_id):
     return f"https://teams.microsoft.com/l/meetup-join/{training_id}"
 
 def generate_certificate_link(staff_id, training_id):
-    return f"https://certificate.classsociety.org/{staff_id}/{training_id}"
+    return f"https://certificate.psbureau.org/{staff_id}/{training_id}"
 
 def get_training(training_id):
     trainings = read_sheet("Trainings")

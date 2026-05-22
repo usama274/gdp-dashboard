@@ -1,3 +1,6 @@
 streamlit>=1.49
 pandas>=2.0
 openpyxl>=3.1
+python-docx>=0.8.11
+PyPDF2>=3.0.0
+python-pptx>=0.6.21

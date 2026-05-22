@@ -390,12 +390,45 @@ def read_upload(uploaded):
     if name.endswith(".txt"): return uploaded.getvalue().decode("utf-8", errors="ignore")
     if name.endswith(".docx"):
         try:
-            docx = importlib.import_module("docx"); d = docx.Document(uploaded); return "\n".join(p.text.strip() for p in d.paragraphs if p.text.strip())
+            docx = importlib.import_module("docx")
+            d = docx.Document(uploaded)
+            return "\n".join(p.text.strip() for p in d.paragraphs if p.text.strip())
         except ModuleNotFoundError:
-            st.error("DOCX needs python-docx. TXT upload works without it."); return ""
+            st.error("DOCX support requires python-docx. TXT upload works without it."); return ""
         except Exception as e:
             st.error(f"Could not read DOCX: {e}"); return ""
-    st.error("Only TXT and DOCX are supported."); return ""
+    if name.endswith(".pdf"):
+        try:
+            pypdf = importlib.import_module("PyPDF2")
+            reader = pypdf.PdfReader(uploaded)
+            text = []
+            for page in reader.pages:
+                page_text = page.extract_text() or ""
+                text.append(page_text)
+            return "\n".join(text).strip()
+        except ModuleNotFoundError:
+            st.error("PDF support requires PyPDF2. TXT and DOCX uploads work without it."); return ""
+        except Exception as e:
+            st.error(f"Could not read PDF: {e}"); return ""
+    if name.endswith(".pptx"):
+        try:
+            pptx = importlib.import_module("pptx")
+            prs = pptx.Presentation(uploaded)
+            text = []
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text"):
+                        content = shape.text.strip()
+                        if content:
+                            text.append(content)
+            return "\n".join(text).strip()
+        except ModuleNotFoundError:
+            st.error("PPTX support requires python-pptx. TXT/DOCX uploads work without it."); return ""
+        except Exception as e:
+            st.error(f"Could not read PPTX: {e}"); return ""
+    if name.endswith(".ppt"):
+        st.error("PPT files are not supported directly. Please save as PPTX and upload again."); return ""
+    st.error("Only TXT, DOCX, PDF, and PPTX files are supported."); return ""
 
 def keywords(text):
     sw={"training","system","should","shall","which","there","their","about","through","during","after","before","within","using","based","these","those","where","under","requirements","procedure","document","classification","society","survey","surveyor","appraisal","management","development"}
@@ -557,7 +590,6 @@ def admin_page(actor):
             safe_session_set("training_target", [])
             if "training_trainer" not in st.session_state:
                 safe_session_set("training_trainer", (trainers["Name"].astype(str)+" — "+trainers["User_ID"].astype(str)).iloc[0])
-            safe_session_set("training_passing", 75)
             with st.form("training"):
                 title=st.text_input("Training Title", key="training_title")
                 cat=st.selectbox("Category",["Basic Survey","Electrical Survey","Hull Survey","Machinery Survey","Plan Appraisal","Statutory Survey","Report Writing","Safety","Quality Management","Rule Development"], key="training_category")
@@ -630,7 +662,7 @@ def trainer_page(actor):
                 trainings=read_sheet("Trainings"); idx=trainings[trainings["Training_ID"]==tid].index[0]; trainings.at[idx,"Slides_Link"]=slides.strip(); trainings.at[idx,"Video_Link"]=video.strip(); trainings.at[idx,"Reference_Link"]=ref.strip(); trainings.at[idx,"Passing_Marks"]=int(passing); trainings.at[idx,"Status"]="Material Added"; trainings.at[idx,"Last_Updated"]=now(); write_sheet("Trainings",trainings)
                 rec=read_sheet("Training_Records"); rec.loc[rec["Training_ID"]==tid,"Passing_Marks"]=int(passing); write_sheet("Training_Records",rec); log("Training Links Saved",actor_get(actor,"User_ID"),actor_get(actor,"Name"),actor_get(actor,"Role"),training_id=tid); st.success("Saved.")
     with b:
-        uploaded=st.file_uploader("Upload Training Content",type=["txt","docx"]); count=st.slider("Number of MCQs",5,20,10)
+        uploaded=st.file_uploader("Upload Training Content",type=["txt","docx","pdf","pptx"]); count=st.slider("Number of MCQs",5,20,10)
         if st.button("Generate MCQs"):
             text=read_upload(uploaded)
             if not text.strip(): st.error("No readable content found.")
