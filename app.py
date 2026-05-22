@@ -342,14 +342,13 @@ def login_page():
         sub=st.form_submit_button("Login")
     if sub:
         if cap.strip()!=st.session_state.get("captcha_answer",""):
-            st.error("Security verification failed."); generate_captcha(); st.rerun()
+            st.error("Security verification failed."); generate_captcha()
         user=authenticate(login_id,pw)
         if not user:
             failed_login(login_id); st.error("Invalid credentials or inactive user."); generate_captcha()
         else:
                 safe_session_update({"logged_in": True, "user": user})
                 log("User Login",user["User_ID"],user["Name"],user["Role"],user_id=user["User_ID"],remarks="Successful login")
-                st.rerun()
     with st.expander("Forgot Password? Secure Reset"):
         reset_id = st.text_input("Enter Login ID or Email to request a reset", key="reset_login")
         if st.button("Request Reset Email"):
@@ -379,7 +378,9 @@ def require_login():
     if st.session_state.get("logged_in") and not all(k in u for k in ["User_ID", "Name", "Role", "Email"]):
         reset_session()
     if not st.session_state.get("logged_in"):
-        login_page(); st.stop()
+        login_page()
+        if not st.session_state.get("logged_in"):
+            st.stop()
     return st.session_state.get("user", {})
 
 # ---------------- Content and MCQs ----------------
@@ -490,7 +491,7 @@ def sidebar(actor):
     st.sidebar.markdown("**Support**\n[support@psbureau.org](mailto:support@psbureau.org)")
     st.sidebar.divider()
     if st.sidebar.button("Logout"):
-        log("User Logout",actor_get(actor,"User_ID"),name,role,user_id=actor_get(actor,"User_ID")); reset_session(); st.rerun()
+        log("User Logout",actor_get(actor,"User_ID"),name,role,user_id=actor_get(actor,"User_ID")); reset_session()
     if role=="Admin":
         if Path(DB_FILE).exists():
             with open(DB_FILE,"rb") as f: st.sidebar.download_button("Download Excel Database",f,file_name=DB_FILE,mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -536,7 +537,7 @@ def admin_page(actor):
             with c3:
                 status=st.selectbox("New Status",["Active","Inactive","Left"], key="status_select")
                 if st.button("Save Status"):
-                    users=read_sheet("Users"); idx=users[users["User_ID"]==sid].index[0]; users.at[idx,"Status"]=status; write_sheet("Users",users); log("User Status Updated",actor_get(actor,"User_ID"),actor_get(actor,"Name"),actor_get(actor,"Role"),user_id=sid,remarks=status); st.rerun()
+                    users=read_sheet("Users"); idx=users[users["User_ID"]==sid].index[0]; users.at[idx,"Status"]=status; write_sheet("Users",users); log("User Status Updated",actor_get(actor,"User_ID"),actor_get(actor,"Name"),actor_get(actor,"Role"),user_id=sid,remarks=status)
         st.subheader("Assign Duty / Remove User")
         if not users.empty:
             selected2=st.selectbox("Select User to Update", users["Name"].astype(str)+" — "+users["User_ID"].astype(str), key="manage_user")
@@ -546,7 +547,7 @@ def admin_page(actor):
             if st.button("Assign Duty"):
                 users=read_sheet("Users"); idx=users[users["User_ID"]==sid2].index[0]; users.at[idx,"Assigned_Duty"]=duty.strip(); write_sheet("Users",users); log("Duty Assigned",actor_get(actor,"User_ID"),actor_get(actor,"Name"),actor_get(actor,"Role"),user_id=sid2,remarks=f"Duty: {duty.strip()}"); st.success("Duty assigned.")
             if st.button("Mark User as Left"):
-                users=read_sheet("Users"); idx=users[users["User_ID"]==sid2].index[0]; users.at[idx,"Status"]="Left"; write_sheet("Users",users); log("User Marked Left",actor_get(actor,"User_ID"),actor_get(actor,"Name"),actor_get(actor,"Role"),user_id=sid2,remarks="Left company"); st.success("User marked as left. Records preserved."); st.rerun()
+                users=read_sheet("Users"); idx=users[users["User_ID"]==sid2].index[0]; users.at[idx,"Status"]="Left"; write_sheet("Users",users); log("User Marked Left",actor_get(actor,"User_ID"),actor_get(actor,"Name"),actor_get(actor,"Role"),user_id=sid2,remarks="Left company"); st.success("User marked as left. Records preserved.")
     with t2:
         users=read_sheet("Users"); trainers=users[(users["Role"]=="Trainer")&(users["Status"]=="Active")]
         if trainers.empty: st.warning("Create an active Trainer first.")
@@ -586,7 +587,6 @@ def admin_page(actor):
                         "training_trainer": (trainers["Name"].astype(str)+" — "+trainers["User_ID"].astype(str)).iloc[0],
                         "training_passing": 75,
                     })
-                    st.experimental_rerun()
     with t3:
         users=read_sheet("Users"); trainings=read_sheet("Trainings")
         if trainings.empty: st.warning("No training created.")
@@ -610,7 +610,6 @@ def admin_page(actor):
                         added+=1
                     write_sheet("Training_Records",rec); refresh_records(); st.success(f"{added} trainee(s) assigned.")
                     safe_session_update({"assign_selected": [], "assign_due_date": today()})
-                    st.experimental_rerun()
     with t4:
         st.warning("Admin-only database view.")
         for title,sheet in [("Dashboard","Dashboard"),("Users","Users"),("Trainings","Trainings"),("Training Records","Training_Records"),("Training Content","Training_Content"),("Question Bank","Question_Bank"),("Notifications","Notifications"),("Certificates","Certificates"),("Activity Log","Activity_Log")]:
@@ -683,7 +682,7 @@ def trainee_page(actor):
         with c3:
             st.subheader("Recording"); st.code(clean(tr["Recording_Link"]));
             if st.button("Mark Recording Complete"):
-                rec=read_sheet("Training_Records"); mask=(rec["User_ID"]==user_id)&(rec["Training_ID"]==tid); rec.loc[mask,"Recording_Opened"]="Yes"; rec.loc[mask,"Video_Opened"]="Yes"; rec.loc[mask,"Live_Attendance"]="Recording Viewed"; rec.loc[mask,"Remarks"]="Recording viewed."; rec.loc[mask,"Last_Updated"]=now(); write_sheet("Training_Records",rec); log("Recording Viewed",user_id,actor_get(actor,"Name"),role,user_id=user_id,training_id=tid); refresh_records(); st.rerun()
+                rec=read_sheet("Training_Records"); mask=(rec["User_ID"]==user_id)&(rec["Training_ID"]==tid); rec.loc[mask,"Recording_Opened"]="Yes"; rec.loc[mask,"Video_Opened"]="Yes"; rec.loc[mask,"Live_Attendance"]="Recording Viewed"; rec.loc[mask,"Remarks"]="Recording viewed."; rec.loc[mask,"Last_Updated"]=now(); write_sheet("Training_Records",rec); log("Recording Viewed",user_id,actor_get(actor,"Name"),role,user_id=user_id,training_id=tid); refresh_records()
     with y:
         qs=read_sheet("Question_Bank"); questions=qs[qs["Training_ID"]==tid] if not qs.empty else pd.DataFrame()
         if questions.empty:
@@ -716,12 +715,12 @@ def trainee_page(actor):
                     write_sheet("Training_Records",rec)
                     log("MCQ Test Submitted",user_id,actor_get(actor,"Name"),role,user_id=user_id,training_id=tid,remarks=f"{score}% {result}")
                     if result=="Passed": issue_certificate(actor,tid,int(score))
-                    refresh_records(); st.success(f"Score: {score}% — {result}"); st.rerun()
+                    refresh_records(); st.success(f"Score: {score}% — {result}")
     with z:
         rec=read_sheet("Training_Records"); table(rec[rec["User_ID"]==user_id])
 
 def trainee_activity(actor, tid, field, remarks):
-    user_id=actor_get(actor,"User_ID"); rec=read_sheet("Training_Records"); mask=(rec["User_ID"]==user_id)&(rec["Training_ID"]==tid); rec.loc[mask,field]="Yes"; rec.loc[mask,"Remarks"]=remarks; rec.loc[mask,"Last_Updated"]=now(); write_sheet("Training_Records",rec); log(field.replace("_"," "),user_id,actor_get(actor,"Name"),actor_get(actor,"Role"),user_id=user_id,training_id=tid,remarks=remarks); refresh_records(); st.rerun()
+    user_id=actor_get(actor,"User_ID"); rec=read_sheet("Training_Records"); mask=(rec["User_ID"]==user_id)&(rec["Training_ID"]==tid); rec.loc[mask,field]="Yes"; rec.loc[mask,"Remarks"]=remarks; rec.loc[mask,"Last_Updated"]=now(); write_sheet("Training_Records",rec); log(field.replace("_"," "),user_id,actor_get(actor,"Name"),actor_get(actor,"Role"),user_id=user_id,training_id=tid,remarks=remarks); refresh_records()
 
 def management_page(actor):
     st.header("Management View"); st.info("Management can monitor progress. Full Excel download is Admin-only.")

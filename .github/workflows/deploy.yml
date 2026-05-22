@@ -38,7 +38,7 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/gdp-dashboard:latest,ghcr.io/${{ github.repository_owner }}/gdp-dashboard:${{ github.sha }}
 
-      - name: Optional: Deploy to Render (if secrets set)
+      - name: "Optional: Deploy to Render (if secrets set)"
         if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_SERVICE_ID != '' }}
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
