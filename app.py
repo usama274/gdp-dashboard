@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 from pathlib import Path
-import hashlib, importlib, os, random, re, secrets, string, uuid, smtplib
+import hashlib, importlib, io, os, random, re, secrets, string, uuid, smtplib, subprocess, sys, urllib.parse
 from email.message import EmailMessage
 
 import pandas as pd
@@ -384,51 +384,123 @@ def require_login():
     return st.session_state.get("user", {})
 
 # ---------------- Content and MCQs ----------------
+EXTRACTOR_PACKAGES = {
+    "docx": "python-docx",
+    "pptx": "python-pptx",
+    "PyPDF2": "PyPDF2",
+}
+
+def ensure_module(import_name, package_name):
+    """Import module; if missing, install it automatically in the current Python environment."""
+    try:
+        return importlib.import_module(import_name)
+    except ModuleNotFoundError:
+        try:
+            with st.spinner(f"Installing missing package: {package_name} ..."):
+                subprocess.check_call([sys.executable, "-m", "pip", "install", package_name, "--quiet"])
+            importlib.invalidate_caches()
+            module = importlib.import_module(import_name)
+            st.success(f"{package_name} installed successfully.")
+            return module
+        except Exception as e:
+            st.error(f"Unable to install {package_name}. In terminal run: python -m pip install {package_name}. Details: {e}")
+            return None
+
+def check_extractors_panel():
+    st.caption("TXT works directly. DOCX/PPTX/PDF support is checked and installed automatically if missing.")
+    if st.button("Check / Install File Extraction Packages"):
+        ok = True
+        for mod, pkg in EXTRACTOR_PACKAGES.items():
+            ok = ensure_module(mod, pkg) is not None and ok
+        if ok:
+            st.success("DOCX, PPTX and PDF extraction support is ready.")
+
 def read_upload(uploaded):
-    if uploaded is None: return ""
+    if uploaded is None:
+        return ""
     name = uploaded.name.lower()
-    if name.endswith(".txt"): return uploaded.getvalue().decode("utf-8", errors="ignore")
+    if name.endswith(".txt"):
+        try:
+            return uploaded.getvalue().decode("utf-8", errors="ignore")
+        except Exception as e:
+            st.error(f"Could not read TXT {uploaded.name}: {e}")
+            return ""
+    def decode_bytes():
+        try:
+            return uploaded.getvalue().decode("utf-8", errors="ignore")
+        except Exception:
+            try:
+                return uploaded.getvalue().decode("latin-1", errors="ignore")
+            except Exception:
+                return ""
+
     if name.endswith(".docx"):
-        try:
-            docx = importlib.import_module("docx")
-            d = docx.Document(uploaded)
-            return "\n".join(p.text.strip() for p in d.paragraphs if p.text.strip())
-        except ModuleNotFoundError:
-            st.error("DOCX support requires python-docx. TXT upload works without it."); return ""
-        except Exception as e:
-            st.error(f"Could not read DOCX: {e}"); return ""
+        docx = ensure_module("docx", "python-docx")
+        if docx is not None:
+            try:
+                d = docx.Document(io.BytesIO(uploaded.getvalue()))
+                return "\n".join(p.text.strip() for p in d.paragraphs if p.text.strip())
+            except Exception:
+                pass
+        return decode_bytes()
+    if name.endswith(".doc"):
+        return decode_bytes()
     if name.endswith(".pdf"):
-        try:
-            pypdf = importlib.import_module("PyPDF2")
-            reader = pypdf.PdfReader(uploaded)
-            text = []
-            for page in reader.pages:
-                page_text = page.extract_text() or ""
-                text.append(page_text)
-            return "\n".join(text).strip()
-        except ModuleNotFoundError:
-            st.error("PDF support requires PyPDF2. TXT and DOCX uploads work without it."); return ""
-        except Exception as e:
-            st.error(f"Could not read PDF: {e}"); return ""
+        pypdf = ensure_module("PyPDF2", "PyPDF2")
+        if pypdf is not None:
+            try:
+                reader = pypdf.PdfReader(io.BytesIO(uploaded.getvalue()))
+                text = "\n".join((page.extract_text() or "") for page in reader.pages).strip()
+                if text:
+                    return text
+            except Exception:
+                pass
+        return decode_bytes()
     if name.endswith(".pptx"):
-        try:
-            pptx = importlib.import_module("pptx")
-            prs = pptx.Presentation(uploaded)
-            text = []
-            for slide in prs.slides:
-                for shape in slide.shapes:
-                    if hasattr(shape, "text"):
-                        content = shape.text.strip()
-                        if content:
-                            text.append(content)
-            return "\n".join(text).strip()
-        except ModuleNotFoundError:
-            st.error("PPTX support requires python-pptx. TXT/DOCX uploads work without it."); return ""
-        except Exception as e:
-            st.error(f"Could not read PPTX: {e}"); return ""
+        pptx = ensure_module("pptx", "python-pptx")
+        if pptx is not None:
+            try:
+                prs = pptx.Presentation(io.BytesIO(uploaded.getvalue()))
+                text = []
+                for slide in prs.slides:
+                    for shape in slide.shapes:
+                        if hasattr(shape, "text"):
+                            content = shape.text.strip()
+                            if content:
+                                text.append(content)
+                result = "\n".join(text).strip()
+                if result:
+                    return result
+            except Exception:
+                pass
+        return decode_bytes()
     if name.endswith(".ppt"):
-        st.error("PPT files are not supported directly. Please save as PPTX and upload again."); return ""
-    st.error("Only TXT, DOCX, PDF, and PPTX files are supported."); return ""
+        return decode_bytes()
+    if name.endswith(".txt"):
+        try:
+            return uploaded.getvalue().decode("utf-8", errors="ignore")
+        except Exception:
+            return decode_bytes()
+    st.error(f"{uploaded.name}: unsupported file type. Use TXT, DOC, DOCX, PDF, PPT or PPTX.")
+    return ""
+
+def read_uploads(uploaded_files):
+    if not uploaded_files:
+        return "", pd.DataFrame(columns=["File_Name", "File_Type", "Readable", "Words"])
+    all_text = []
+    report = []
+    for uploaded in uploaded_files:
+        text = read_upload(uploaded)
+        words = len(text.split()) if text else 0
+        report.append({
+            "File_Name": uploaded.name,
+            "File_Type": uploaded.name.split(".")[-1].lower(),
+            "Readable": "Yes" if words > 0 else "No",
+            "Words": words,
+        })
+        if text:
+            all_text.append(f"\n\n--- SOURCE FILE: {uploaded.name} ---\n{text}")
+    return "\n".join(all_text).strip(), pd.DataFrame(report)
 
 def keywords(text):
     sw={"training","system","should","shall","which","there","their","about","through","during","after","before","within","using","based","these","those","where","under","requirements","procedure","document","classification","society","survey","surveyor","appraisal","management","development"}
@@ -455,7 +527,25 @@ def generate_mcqs(training_id, text, max_q=10):
     return pd.DataFrame(rows, columns=SCHEMA["Question_Bank"])
 
 # ---------------- Business ----------------
-def meeting_link(tid): return f"https://teams.microsoft.com/l/meetup-join/{tid}"
+def meeting_link(tid, title="Training Session", schedule_date="", schedule_time="10:00 AM"):
+    """Create a Microsoft Teams meeting creation link.
+
+    This opens Microsoft Teams with meeting details pre-filled. After Teams creates
+    the real meeting, paste the final Teams join link back into the Meeting Link
+    field before clicking Schedule and Notify.
+    """
+    subject = f"{title} - {tid}".strip()
+    body = (
+        f"Training ID: {tid}\n"
+        f"Training Title: {title}\n"
+        f"Schedule: {schedule_date} {schedule_time}\n\n"
+        "Please join this HRDM training session through Microsoft Teams."
+    )
+    return (
+        "https://teams.microsoft.com/l/meeting/new?"
+        f"subject={urllib.parse.quote_plus(subject)}"
+        f"&content={urllib.parse.quote_plus(body)}"
+    )
 def cert_link(user_id, tid): return f"https://certificate.psbureau.org/{user_id}/{tid}"
 
 def notify_training(tid, actor):
@@ -662,24 +752,68 @@ def trainer_page(actor):
                 trainings=read_sheet("Trainings"); idx=trainings[trainings["Training_ID"]==tid].index[0]; trainings.at[idx,"Slides_Link"]=slides.strip(); trainings.at[idx,"Video_Link"]=video.strip(); trainings.at[idx,"Reference_Link"]=ref.strip(); trainings.at[idx,"Passing_Marks"]=int(passing); trainings.at[idx,"Status"]="Material Added"; trainings.at[idx,"Last_Updated"]=now(); write_sheet("Trainings",trainings)
                 rec=read_sheet("Training_Records"); rec.loc[rec["Training_ID"]==tid,"Passing_Marks"]=int(passing); write_sheet("Training_Records",rec); log("Training Links Saved",actor_get(actor,"User_ID"),actor_get(actor,"Name"),actor_get(actor,"Role"),training_id=tid); st.success("Saved.")
     with b:
-        uploaded=st.file_uploader("Upload Training Content",type=["txt","docx","pdf","pptx"]); count=st.slider("Number of MCQs",5,20,10)
+        check_extractors_panel()
+        uploaded_files=st.file_uploader("Upload Training Content",type=["txt","doc","docx","pdf","ppt","pptx"], accept_multiple_files=True, help="Upload one or more TXT, DOC, DOCX, PDF, PPT or PPTX files."); count=st.slider("Number of MCQs",5,20,10)
         if st.button("Generate MCQs"):
-            text=read_upload(uploaded)
-            if not text.strip(): st.error("No readable content found.")
+            text, report = read_uploads(uploaded_files)
+            if not report.empty:
+                st.subheader("File Extraction Report")
+                table(report)
+            if not text.strip(): st.error("No readable content found. Check file type or click Check / Install File Extraction Packages.")
             else:
-                append_row("Training_Content",{"Content_ID":uid("CONTENT"),"Training_ID":tid,"File_Name":uploaded.name,"File_Type":uploaded.name.split(".")[-1].lower(),"Content_Text":text[:30000],"Uploaded_By":actor_get(actor,"Name"),"Uploaded_On":now()})
+                for uploaded in uploaded_files:
+                    single_text = read_upload(uploaded)
+                    if single_text.strip():
+                        append_row("Training_Content",{"Content_ID":uid("CONTENT"),"Training_ID":tid,"File_Name":uploaded.name,"File_Type":uploaded.name.split(".")[-1].lower(),"Content_Text":single_text[:30000],"Uploaded_By":actor_get(actor,"Name"),"Uploaded_On":now()})
                 new=generate_mcqs(tid,text,count)
                 if new.empty: st.error("Could not generate MCQs. Use clear technical sentences.")
                 else:
                     q=read_sheet("Question_Bank"); q=pd.concat([q,new],ignore_index=True); write_sheet("Question_Bank",q); log("MCQs Generated",actor_get(actor,"User_ID"),actor_get(actor,"Name"),actor_get(actor,"Role"),training_id=tid,remarks=f"{len(new)} questions"); update_dashboard(); st.success(f"{len(new)} MCQs generated."); table(new)
         q=read_sheet("Question_Bank"); st.subheader("Existing MCQs"); table(q[q["Training_ID"]==tid] if not q.empty else q)
     with c:
-        sdate=st.date_input("Schedule Date"); stime=st.text_input("Schedule Time","10:00 AM"); link=st.text_input("Meeting Link",meeting_link(tid))
+        st.subheader("Schedule Training and Create MS Teams Link")
+        sdate = st.date_input("Schedule Date")
+        stime = st.text_input("Schedule Time", "10:00 AM")
+
+        generated_link = meeting_link(tid, clean(tr["Training_Title"]), str(sdate), stime)
+        existing_link = clean(tr.get("Meeting_Link", ""))
+        session_key = f"teams_link_{tid}"
+
+        st.caption("Step 1: Click the button below to open Microsoft Teams and create the meeting. Step 2: Copy the final Teams join link from Teams and paste it in the Meeting Link field. Step 3: Click Schedule and Notify.")
+
+        col_a, col_b = st.columns([1, 2])
+        with col_a:
+            st.link_button("Open MS Teams to Create Meeting", generated_link)
+        with col_b:
+            if st.button("Use Generated Teams Draft Link"):
+                safe_session_update({session_key: generated_link})
+                st.success("Generated Teams draft link placed in the Meeting Link field.")
+
+        default_link = st.session_state.get(session_key, existing_link or generated_link)
+        link = st.text_input(
+            "Meeting Link",
+            value=default_link,
+            help="Paste the final Microsoft Teams join link here. The generated draft link opens Teams to create the meeting; the final join link is produced by Teams.",
+        )
+
         if st.button("Schedule and Notify"):
-            if not url_ok(link): st.error("Meeting link must start with http:// or https://")
+            if not url_ok(link):
+                st.error("Meeting link must start with http:// or https://")
             else:
-                trainings=read_sheet("Trainings"); idx=trainings[trainings["Training_ID"]==tid].index[0]; trainings.at[idx,"Schedule_Date"]=str(sdate); trainings.at[idx,"Schedule_Time"]=stime; trainings.at[idx,"Meeting_Link"]=link.strip(); trainings.at[idx,"Status"]="Scheduled"; trainings.at[idx,"Last_Updated"]=now(); write_sheet("Trainings",trainings); notify_training(tid,actor); update_dashboard(); st.success("Scheduled and notifications generated.")
-        n=read_sheet("Notifications"); table(n[n["Training_ID"]==tid] if not n.empty else n)
+                trainings = read_sheet("Trainings")
+                idx = trainings[trainings["Training_ID"] == tid].index[0]
+                trainings.at[idx, "Schedule_Date"] = str(sdate)
+                trainings.at[idx, "Schedule_Time"] = stime
+                trainings.at[idx, "Meeting_Link"] = link.strip()
+                trainings.at[idx, "Status"] = "Scheduled"
+                trainings.at[idx, "Last_Updated"] = now()
+                write_sheet("Trainings", trainings)
+                notify_training(tid, actor)
+                update_dashboard()
+                st.success("Scheduled and notifications generated. The MS Teams meeting link has been saved.")
+
+        n = read_sheet("Notifications")
+        table(n[n["Training_ID"] == tid] if not n.empty else n)
     with d:
         rec=read_sheet("Training_Records"); trainees=rec[rec["Training_ID"]==tid]
         if trainees.empty: st.warning("No trainees assigned.")
