@@ -268,13 +268,6 @@ CLASSIFICATION_AUTH_SCOPES = [f"{pathway} - {discipline}" for pathway in AUTHORI
 SCOPES = list(dict.fromkeys(SCOPES + CLASSIFICATION_AUTH_SCOPES))
 JOB_TYPES = list(dict.fromkeys(JOB_TYPES + ["Assisted Survey", "Independent Survey", "Witness Plan Review", "Independent Plan Review"]))
 ROLES = list(dict.fromkeys(ROLES + ["Technical Staff / Surveyor Trainee", "Technical Staff / Plan Appraisal Trainee", "Designer", "Shipyard Representative", "Competency Manager", "Survey Operations Manager", "Plan Approval Manager", "Document Controller", "Technical Monitor", "Client Owner", "Flag Statutory Coordinator", "Vendor Auditor", "Remote Survey Coordinator"]))
-
-# V20 Authorization Lifecycle roles
-ROLES = list(dict.fromkeys(ROLES + [
-    "Authorization Board Member",
-    "CPD Coordinator",
-    "Authorization Lifecycle Manager"
-]))
 DEFAULT_AUTH_MATRIX = list(dict.fromkeys(DEFAULT_AUTH_MATRIX + [
     (f"New Building Surveyor - {d}", "New Building Survey", 2, 1, 0, 0, 3, 3, "High" if d in ["Statutory and Safety", "Environmental and Alternative Fuels"] else "Medium", 36) for d in AUTHORIZATION_DISCIPLINES
 ] + [
@@ -1814,39 +1807,29 @@ def require_login() -> dict:
 def role_page_matrix() -> dict:
     """Professional role-based navigation for fast loading and clear accountability."""
     common = ["Dashboard", "My Training", "My Certificates", "Knowledge Library"]
-
-    v20_extra_pages = [
-        "Authorization Lifecycle",
-        "CPD & Refresher Control",
-        "Monitoring Schedule",
-        "Competency Board Review",
-        "Rule Update Training Impact",
-        "Reauthorization Status Center",
-        "Authorization Lifecycle Gap Closure"
-    ]
     return {
-        "CEO": ["CEO Dashboard", "Reauthorization Status Center"] + [ "V16 Production Readiness Center", "Final V16 Gap Closure", "Backend Communication Flow Validator", "Enterprise Health Center", "World-Class Information Flow", "Enterprise Search", "AI Competency Advisor", "Executive ERP Analytics", "Enterprise Workflow Engine", "Final Live ERP Launch Control", "Final ERP Completion Review", "International ERP Final Review", "V15 Final Gap Closure Review", "Final Release Readiness", "Final Live ERP Launch Control", "Production Security Center", "Final Security Operations", "ERP Governance Hub", "State-of-Art ERP Review", "Role Maturity Optimizer", "Management", "Accreditation Readiness", "Audit Readiness Engine", "Workforce Forecasting", "KPI", "V17 Production Closure & Role Gap Review"],
-        "Admin": ["Dashboard"] + v20_extra_pages + [ "Admin", "V18 Live Pre-Launch Testing", "HR + Accounting System", "V18 Final Launch Gap Closure", "V16 Production Readiness Center", "Live Integration Operations", "Immutable Audit Control", "External Portal Data Isolation", "Internal Classification Society Portal", "External Stakeholder Portal", "Backend Communication Flow Validator", "Role UAT Matrix", "Digital Signature Trust Center", "Field PWA Operations", "Finance HR Integration Verification", "Database Rules Verification", "Final V16 Gap Closure",  "ERP Governance Hub", "Enterprise Search", "Knowledge Graph", "AI Competency Advisor", "Lessons Learned Portal", "Enterprise Notification Engine", "Mobile App Center", "Client Self Service", "Enterprise Communication Hub", "Native Mobile Operations", "Strict Document Enforcement", "Expanded Client Self-Service", "Commercial Module", "HR Integration Layer", "Rule Change Management", "Rule Development Automation", "Enterprise Workflow Engine", "Final Live ERP Launch Control", "Final ERP Completion Review", "International ERP Final Review", "V15 Final Gap Closure Review", "Production Security Center", "Final Security Operations", "External Portal Isolation", "Final Portal Isolation", "Final Portal Isolation", "Database Enforcement Center", "Final Database Hard Rules", "Real Integration Connectors", "Final Live Integration Center", "Field Mobile App Blueprint", "Final Mobile PWA Operations", "Production Testing UAT", "Final UAT Test Suite", "Workflow SLA Rules", "UI/UX Final Polish", "Final Role Landing UX", "Final Release Readiness", "Final Live ERP Launch Control", "World-Class Information Flow", "Role Permission Matrix", "UI/UX & Performance Health", "State-of-Art UI/UX Design", "Performance Safeguards", "Workflow Task Center", "State-of-Art ERP Review", "Role Maturity Optimizer", "Training Matrix", "Training", "Files", "Competency Matrix", "Digital Certificates", "Document Control", "Controlled Transmittals", "Backup", "QR Verify", "V17 Production Closure & Role Gap Review"],
-        "Management": ["Dashboard", "Reauthorization Status Center", "Competency Board Review"] + [ "V18 Final Launch Gap Closure", "V16 Production Readiness Center", "Backend Communication Flow Validator", "Role UAT Matrix", "Enterprise Health Center", "Enterprise Search", "AI Competency Advisor", "Lessons Learned Portal", "World-Class Information Flow", "Enterprise Communication Hub", "Enterprise Workflow Engine", "Commercial Module", "HR Integration Layer", "Rule Change Management", "Workflow Task Center", "Role Maturity Optimizer", "Management", "Executive ERP Analytics", "Workforce Planning", "Workforce Forecasting", "Accreditation Readiness", "Audit Readiness Engine", "Authorization", "CRB", "KPI", "State-of-Art ERP Review", "V17 Production Closure & Role Gap Review"],
-        "Competency Manager": ["Dashboard"] + v20_extra_pages + [ "Workflow Task Center", "Enterprise Search", "Knowledge Graph", "AI Competency Advisor", "Lessons Learned Portal", "World-Class Information Flow", "Role Maturity Optimizer", "Competency Manager", "Competency Matrix", "Qualification Scopes", "Authorization", "Restrictions", "Reauthorization Engine", "Survey Logbook & Decay", "Advanced Practical Development", "Technical Monitoring", "Digital Certificates", "State-of-Art ERP Review"],
+        "CEO": ["CEO Dashboard", "V16 Production Readiness Center", "Final V16 Gap Closure", "Backend Communication Flow Validator", "Enterprise Health Center", "World-Class Information Flow", "Enterprise Search", "AI Competency Advisor", "Executive ERP Analytics", "Enterprise Workflow Engine", "Final Live ERP Launch Control", "Final ERP Completion Review", "International ERP Final Review", "V15 Final Gap Closure Review", "Final Release Readiness", "Final Live ERP Launch Control", "Production Security Center", "Final Security Operations", "ERP Governance Hub", "State-of-Art ERP Review", "Role Maturity Optimizer", "Management", "Accreditation Readiness", "Audit Readiness Engine", "Workforce Forecasting", "KPI", "V17 Production Closure & Role Gap Review"],
+        "Admin": ["Dashboard", "Admin", "V18 Live Pre-Launch Testing", "HR + Accounting System", "V18 Final Launch Gap Closure", "V16 Production Readiness Center", "Live Integration Operations", "Immutable Audit Control", "External Portal Data Isolation", "Internal Classification Society Portal", "External Stakeholder Portal", "Backend Communication Flow Validator", "Role UAT Matrix", "Digital Signature Trust Center", "Field PWA Operations", "Finance HR Integration Verification", "Database Rules Verification", "Final V16 Gap Closure",  "ERP Governance Hub", "Enterprise Search", "Knowledge Graph", "AI Competency Advisor", "Lessons Learned Portal", "Enterprise Notification Engine", "Mobile App Center", "Client Self Service", "Enterprise Communication Hub", "Native Mobile Operations", "Strict Document Enforcement", "Expanded Client Self-Service", "Commercial Module", "HR Integration Layer", "Rule Change Management", "Rule Development Automation", "Enterprise Workflow Engine", "Final Live ERP Launch Control", "Final ERP Completion Review", "International ERP Final Review", "V15 Final Gap Closure Review", "Production Security Center", "Final Security Operations", "External Portal Isolation", "Final Portal Isolation", "Final Portal Isolation", "Database Enforcement Center", "Final Database Hard Rules", "Real Integration Connectors", "Final Live Integration Center", "Field Mobile App Blueprint", "Final Mobile PWA Operations", "Production Testing UAT", "Final UAT Test Suite", "Workflow SLA Rules", "UI/UX Final Polish", "Final Role Landing UX", "Final Release Readiness", "Final Live ERP Launch Control", "World-Class Information Flow", "Role Permission Matrix", "UI/UX & Performance Health", "State-of-Art UI/UX Design", "Performance Safeguards", "Workflow Task Center", "State-of-Art ERP Review", "Role Maturity Optimizer", "Training Matrix", "Training", "Files", "Competency Matrix", "Digital Certificates", "Document Control", "Controlled Transmittals", "Backup", "QR Verify", "V17 Production Closure & Role Gap Review"],
+        "Management": ["Dashboard", "V18 Final Launch Gap Closure", "V16 Production Readiness Center", "Backend Communication Flow Validator", "Role UAT Matrix", "Enterprise Health Center", "Enterprise Search", "AI Competency Advisor", "Lessons Learned Portal", "World-Class Information Flow", "Enterprise Communication Hub", "Enterprise Workflow Engine", "Commercial Module", "HR Integration Layer", "Rule Change Management", "Workflow Task Center", "Role Maturity Optimizer", "Management", "Executive ERP Analytics", "Workforce Planning", "Workforce Forecasting", "Accreditation Readiness", "Audit Readiness Engine", "Authorization", "CRB", "KPI", "State-of-Art ERP Review", "V17 Production Closure & Role Gap Review"],
+        "Competency Manager": ["Dashboard", "Workflow Task Center", "Enterprise Search", "Knowledge Graph", "AI Competency Advisor", "Lessons Learned Portal", "World-Class Information Flow", "Role Maturity Optimizer", "Competency Manager", "Competency Matrix", "Qualification Scopes", "Authorization", "Restrictions", "Reauthorization Engine", "Survey Logbook & Decay", "Advanced Practical Development", "Technical Monitoring", "Digital Certificates", "State-of-Art ERP Review"],
         "Survey Operations Manager": ["Dashboard", "Workflow Task Center", "Workflow SLA Rules", "Field Mobile App Blueprint", "Enterprise Search", "Client Self Service", "Mobile App Center", "Native Mobile Operations", "Enterprise Notification Engine", "Enterprise Communication Hub", "Enterprise Workflow Engine", "HR Integration Layer", "World-Class Information Flow", "Survey Operations Manager", "Job Allocation", "Survey Logbook & Decay", "NB Survey Ops", "In-Service Survey Ops", "Client Owner Portal", "Shipyard Portal", "NCR Closure", "Document Control", "Controlled Transmittals", "Appraised Drawing Distribution", "Mobile Survey Evidence", "KPI"],
         "Plan Approval Manager": ["Dashboard", "Workflow Task Center", "Enterprise Search", "Knowledge Graph", "Lessons Learned Portal", "World-Class Information Flow", "Plan Approval Manager", "Plan Peer Quality", "Plan Review QA", "Designer Portal", "Drawing Revisions", "Appraised Drawing Distribution", "Document Control", "Controlled Transmittals", "Technical Knowledge Repository", "KPI"],
         "Document Controller": ["Dashboard", "Immutable Audit Control", "Digital Signature Trust Center", "Database Rules Verification", "Workflow Task Center", "Database Enforcement Center", "External Portal Isolation", "Enterprise Search", "Knowledge Graph", "Enterprise Notification Engine", "World-Class Information Flow", "Document Control", "Controlled Transmittals", "Strict Document Enforcement", "Drawing Revisions", "Appraised Drawing Distribution", "Digital Certificates", "Technical Knowledge Repository", "QR Verify"],
-        "Technical Monitor": ["Dashboard", "Monitoring Schedule"] + [ "Workflow Task Center", "AI Competency Advisor", "Lessons Learned Portal", "World-Class Information Flow", "Technical Monitoring", "Survey Logbook & Decay", "Advanced Practical Development", "Competency Matrix", "Technical Knowledge Repository", "Interpretation Portal"],
-        "Trainer": ["Dashboard", "CPD & Refresher Control", "Rule Update Training Impact"] + [ "Workflow Task Center", "Enterprise Search", "AI Competency Advisor", "Lessons Learned Portal", "Assigned Candidates", "Training Matrix", "Training", "Files", "Training Practical Eligibility", "Enhanced Training Flow", "Competency Matrix", "KPI"],
+        "Technical Monitor": ["Dashboard", "Workflow Task Center", "AI Competency Advisor", "Lessons Learned Portal", "World-Class Information Flow", "Technical Monitoring", "Survey Logbook & Decay", "Advanced Practical Development", "Competency Matrix", "Technical Knowledge Repository", "Interpretation Portal"],
+        "Trainer": ["Dashboard", "Workflow Task Center", "Enterprise Search", "AI Competency Advisor", "Lessons Learned Portal", "Assigned Candidates", "Training Matrix", "Training", "Files", "Training Practical Eligibility", "Enhanced Training Flow", "Competency Matrix", "KPI"],
         "Training Coordinator": ["Dashboard", "Training Matrix", "Training", "Assigned Candidates", "Training Practical Eligibility", "Digital Certificates", "KPI"],
         "Tutor/Mentor": ["Dashboard", "Assigned Candidates", "Practical/Witness", "Advanced Practical Development", "Competency", "Technical Monitoring", "Authorization", "Knowledge Library"],
-        "Technical Manager": ["Dashboard", "Authorization Lifecycle", "Competency Board Review", "Rule Update Training Impact"] + [ "Rule Development Automation", "Rule Change Management", "Technical Authority", "Technical Monitoring", "Technical Knowledge Repository", "Interpretation Portal", "Authorization", "CRB", "Survey Report Review", "Plan Review QA"],
+        "Technical Manager": ["Dashboard", "Rule Development Automation", "Rule Change Management", "Technical Authority", "Technical Monitoring", "Technical Knowledge Repository", "Interpretation Portal", "Authorization", "CRB", "Survey Report Review", "Plan Review QA"],
         "Principal Surveyor": ["Dashboard", "Practical/Witness", "In-Service Survey Ops", "Survey Report Review", "Technical Monitoring", "NCR Closure", "Knowledge Library"],
         "Chief Plan Appraiser": ["Dashboard", "Plan Approval Manager", "Plan Review QA", "Drawing Revisions", "Appraised Drawing Distribution", "Technical Knowledge Repository"],
-        "QMR": ["Dashboard", "Competency Board Review", "Authorization Lifecycle Gap Closure"] + [ "QMS", "Production Testing UAT", "Production Security Center", "Final Security Operations", "External Portal Isolation", "Final Portal Isolation", "Enterprise Search", "Lessons Learned Portal", "Enterprise Notification Engine", "World-Class Information Flow", "Competency NCR", "Annual Board", "Audit Readiness Engine", "Accreditation Readiness", "NCR Closure", "Revalidation", "State-of-Art ERP Review", "V17 Production Closure & Role Gap Review"],
+        "QMR": ["Dashboard", "QMS", "Production Testing UAT", "Production Security Center", "Final Security Operations", "External Portal Isolation", "Final Portal Isolation", "Enterprise Search", "Lessons Learned Portal", "Enterprise Notification Engine", "World-Class Information Flow", "Competency NCR", "Annual Board", "Audit Readiness Engine", "Accreditation Readiness", "NCR Closure", "Revalidation", "State-of-Art ERP Review", "V17 Production Closure & Role Gap Review"],
         "QMS Auditor": ["Dashboard", "QMS", "Competency NCR", "Audit Readiness Engine", "Accreditation Readiness", "Revalidation"],
-        "CRB Member": ["Dashboard", "Competency Board Review", "Reauthorization Status Center"] + [ "CRB", "Authorization", "Competency Matrix", "Reauthorization Engine", "Technical Monitoring"],
+        "CRB Member": ["Dashboard", "CRB", "Authorization", "Competency Matrix", "Reauthorization Engine", "Technical Monitoring"],
         "Job Coordinator": ["Dashboard", "Job Allocation", "Survey Operations Manager", "Competency Matrix", "NB Survey Ops", "In-Service Survey Ops", "Appraised Drawing Distribution"],
-        "Surveyor": common + ["Reauthorization Status Center", "CPD & Refresher Control", "Monitoring Schedule"] + ["Internal Classification Society Portal", "Field PWA Operations", "Workflow Task Center", "Enterprise Search", "Mobile App Center", "Lessons Learned Portal", "Survey Logbook & Decay", "Practical/Witness", "In-Service Survey Ops", "Mobile Survey Evidence", "NCR Closure", "Appraised Drawing Distribution", "Competency", "Authorization"],
-        "New Building Surveyor": common + ["Reauthorization Status Center", "CPD & Refresher Control", "Monitoring Schedule"] + ["Internal Classification Society Portal", "Field PWA Operations", "Workflow Task Center", "Enterprise Search", "Mobile App Center", "Lessons Learned Portal", "Survey Logbook & Decay", "Practical/Witness", "NB Survey Ops", "NB Stage Gate", "Mobile Survey Evidence", "NCR Closure", "Appraised Drawing Distribution", "Competency", "Authorization"],
-        "Plan Appraiser": common + ["Reauthorization Status Center", "CPD & Refresher Control", "Monitoring Schedule"] + ["Internal Classification Society Portal", "Workflow Task Center", "Enterprise Search", "Knowledge Graph", "Lessons Learned Portal", "Plan Peer Quality", "Drawing Revisions", "Appraised Drawing Distribution", "Plan Review QA", "Technical Knowledge Repository", "Competency", "Authorization"],
-        "ISM/ISPS/MLC Auditor": common + ["Reauthorization Status Center", "CPD & Refresher Control", "Monitoring Schedule"] + ["QMS", "Practical/Witness", "Competency", "Authorization", "Audit Readiness Engine"],
+        "Surveyor": common + ["Internal Classification Society Portal", "Field PWA Operations", "Workflow Task Center", "Enterprise Search", "Mobile App Center", "Lessons Learned Portal", "Survey Logbook & Decay", "Practical/Witness", "In-Service Survey Ops", "Mobile Survey Evidence", "NCR Closure", "Appraised Drawing Distribution", "Competency", "Authorization"],
+        "New Building Surveyor": common + ["Internal Classification Society Portal", "Field PWA Operations", "Workflow Task Center", "Enterprise Search", "Mobile App Center", "Lessons Learned Portal", "Survey Logbook & Decay", "Practical/Witness", "NB Survey Ops", "NB Stage Gate", "Mobile Survey Evidence", "NCR Closure", "Appraised Drawing Distribution", "Competency", "Authorization"],
+        "Plan Appraiser": common + ["Internal Classification Society Portal", "Workflow Task Center", "Enterprise Search", "Knowledge Graph", "Lessons Learned Portal", "Plan Peer Quality", "Drawing Revisions", "Appraised Drawing Distribution", "Plan Review QA", "Technical Knowledge Repository", "Competency", "Authorization"],
+        "ISM/ISPS/MLC Auditor": common + ["QMS", "Practical/Witness", "Competency", "Authorization", "Audit Readiness Engine"],
         "Rule Development Rep": ["Dashboard", "Rule Development Automation", "Rule Change Management", "Technical Knowledge Repository", "Interpretation Portal", "Document Control", "Controlled Transmittals", "Training Practical Eligibility", "AI Competency Advisor", "Enterprise Workflow Engine", "Enterprise Notification Engine", "Knowledge Library"],
         "Trainee Rule Development Representative": ["Dashboard", "My Training", "Rule Development Automation", "Knowledge Library", "My Certificates"],
         "Flag Statutory Coordinator": ["Dashboard", "Client Owner Portal", "Authorization", "Digital Certificates", "Document Control", "Knowledge Library"],
@@ -1865,9 +1848,6 @@ def role_page_matrix() -> dict:
         "Insurance/P&I Viewer": ["Dashboard", "External Stakeholder Portal", "PSC / Insurance Viewer", "Digital Certificates", "Client Survey History", "NCR Closure", "Enterprise Search"],
         "Manufacturer/Vendor": ["Dashboard", "Manufacturer Vendor Portal", "Controlled Transmittals", "NCR Closure", "Client Self Service", "Knowledge Library"],
         "Subcontracted Surveyor": ["Dashboard", "Subcontracted Surveyor Workspace", "Workflow Task Center", "Mobile App Center", "Mobile Survey Evidence", "Appraised Drawing Distribution", "NCR Closure", "My Certificates", "Knowledge Library"],
-        "Authorization Lifecycle Manager": ["Dashboard"] + v20_extra_pages + ["Competency Manager", "Authorization", "Restrictions", "Digital Certificates", "Enterprise Workflow Engine", "Enterprise Notification Engine"],
-        "Authorization Board Member": ["Dashboard", "Competency Board Review", "Authorization Lifecycle", "Reauthorization Status Center", "CRB", "Technical Monitoring", "Competency Matrix"],
-        "CPD Coordinator": ["Dashboard", "CPD & Refresher Control", "Rule Update Training Impact", "Training", "Training Matrix", "Assigned Candidates", "Reauthorization Status Center"],
         "Trainee": ["Dashboard", "My Training", "My Certificates", "Enhanced Training Flow", "Training Practical Eligibility", "Practical/Witness", "Competency", "Authorization", "Knowledge Library"],
         "On Probation": ["Dashboard", "My Training", "My Certificates", "Enhanced Training Flow", "Practical/Witness", "Knowledge Library"],
     }
@@ -8857,8 +8837,6 @@ def main() -> None:
     seed_v14_live_production_defaults()
     ensure_v18_launch_hr_accounting_schema()
     ensure_v19_rule_development_automation_schema()
-    ensure_v20_authorization_lifecycle_schema()
-    seed_v20_authorization_lifecycle_defaults()
     actor = require_login()
     run_training_overdue_engine()
     header()
@@ -9010,13 +8988,6 @@ def main() -> None:
     elif page == "V18 Live Pre-Launch Testing": v18_live_prelaunch_testing_page(actor)
     elif page == "HR + Accounting System": v18_hr_accounting_system_page(actor)
     elif page == "V18 Final Launch Gap Closure": v18_final_launch_gap_closure_page(actor)
-    elif page == "Authorization Lifecycle": authorization_lifecycle_page(actor)
-    elif page == "CPD & Refresher Control": cpd_refresher_control_page(actor)
-    elif page == "Monitoring Schedule": monitoring_schedule_page(actor)
-    elif page == "Competency Board Review": competency_board_review_page(actor)
-    elif page == "Rule Update Training Impact": rule_update_training_impact_page(actor)
-    elif page == "Reauthorization Status Center": reauthorization_status_center_page(actor)
-    elif page == "Authorization Lifecycle Gap Closure": authorization_lifecycle_gap_closure_page(actor)
     elif page == "Management": management_page(actor)
 
 
@@ -9552,8 +9523,6 @@ def rule_development_automation_page(actor: dict) -> None:
     st.title("📘 Rule Development Automation")
     st.caption("Automated class rule / circular lifecycle: source monitoring → impact analysis → approval → training → controlled release → communication.")
     ensure_v19_rule_development_automation_schema()
-    ensure_v20_authorization_lifecycle_schema()
-    seed_v20_authorization_lifecycle_defaults()
     tabs = st.tabs(["Dashboard", "New Rule Project", "Impact Assessment", "Approvals", "Training Actions", "Communications", "Release Register", "Workflow Map"])
     with tabs[0]:
         projects = db_all("rule_development_projects_v19")
@@ -9865,393 +9834,6 @@ def v18_final_launch_gap_closure_page(actor: dict):
         {"Item":"HR/accounting system", "V18 Addition":"HR master, leave, payroll, ledger and admin process flow", "Production Action":"Connect payroll/accounting API if available"},
     ], "V18 closure matrix")
     st.success("V18 provides the final in-app control layer. Real-time external testing requires deployed Render URL and real provider credentials.")
-
-
-# =====================================================================
-# V20 AUTHORIZATION LIFECYCLE, CPD, MONITORING AND REAUTHORIZATION
-# =====================================================================
-
-def ensure_v20_authorization_lifecycle_schema() -> None:
-    """Career-long authorization lifecycle controls for Surveyors, NB Surveyors,
-    Plan Appraisers, Auditors, Technical Authorities and Technical Monitors."""
-    stmts = [
-        """create table if not exists authorization_lifecycle_v20 (
-            lifecycle_id text primary key,
-            user_id text,
-            person_name text,
-            role_name text,
-            authorization_scope text,
-            authorization_domain text,
-            state text,
-            issue_date text,
-            expiry_date text,
-            days_remaining integer,
-            refresher_due_date text,
-            monitoring_due_date text,
-            cpd_required_hours real,
-            cpd_completed_hours real,
-            last_activity_date text,
-            activity_count integer,
-            risk_color text,
-            next_action text,
-            owner_role text,
-            created_on text,
-            updated_on text
-        )""",
-        """create table if not exists refresher_requirements_v20 (
-            requirement_id text primary key,
-            target_role text,
-            authorization_scope text,
-            trigger_type text,
-            trigger_days_before_expiry integer,
-            mandatory_courses text,
-            mandatory_mcq text,
-            minimum_score real,
-            cpd_hours_required real,
-            rule_update_training_required text,
-            technical_interview_required text,
-            practical_monitoring_required text,
-            created_by text,
-            created_on text
-        )""",
-        """create table if not exists cpd_records_v20 (
-            cpd_id text primary key,
-            user_id text,
-            person_name text,
-            activity_type text,
-            title text,
-            provider text,
-            date_completed text,
-            hours real,
-            linked_scope text,
-            evidence_link text,
-            approved_by text,
-            status text,
-            created_on text
-        )""",
-        """create table if not exists monitoring_schedule_v20 (
-            monitoring_id text primary key,
-            user_id text,
-            person_name text,
-            role_name text,
-            authorization_scope text,
-            monitoring_type text,
-            due_date text,
-            monitor_id text,
-            monitor_name text,
-            status text,
-            score real,
-            finding_summary text,
-            corrective_action text,
-            closure_status text,
-            created_on text,
-            updated_on text
-        )""",
-        """create table if not exists competency_board_reviews_v20 (
-            review_id text primary key,
-            board_period text,
-            user_id text,
-            person_name text,
-            role_name text,
-            scope_reviewed text,
-            evidence_pack_status text,
-            refresher_status text,
-            cpd_status text,
-            monitoring_status text,
-            performance_status text,
-            board_decision text,
-            restriction_action text,
-            suspension_action text,
-            remarks text,
-            reviewed_by text,
-            created_on text
-        )""",
-        """create table if not exists rule_update_training_impact_v20 (
-            impact_id text primary key,
-            source_type text,
-            rule_reference text,
-            change_summary text,
-            affected_roles text,
-            affected_scopes text,
-            required_training text,
-            required_mcq text,
-            due_date text,
-            notification_status text,
-            completion_status text,
-            created_by text,
-            created_on text
-        )""",
-        """create table if not exists authorization_lifecycle_policy_v20 (
-            policy_id text primary key,
-            policy_name text,
-            applies_to_roles text,
-            rule_statement text,
-            trigger_condition text,
-            system_action text,
-            escalation_to text,
-            status text,
-            created_on text
-        )""",
-        """create index if not exists idx_auth_lifecycle_v20_user on authorization_lifecycle_v20(user_id)""",
-        """create index if not exists idx_auth_lifecycle_v20_state on authorization_lifecycle_v20(state)""",
-        """create index if not exists idx_monitoring_v20_user on monitoring_schedule_v20(user_id)""",
-        """create index if not exists idx_cpd_v20_user on cpd_records_v20(user_id)""",
-    ]
-    for s in stmts:
-        db_execute(s)
-
-
-def seed_v20_authorization_lifecycle_defaults() -> None:
-    try:
-        if db_all('authorization_lifecycle_policy_v20').empty:
-            policies = [
-                ('POL-REAUTH-180','180-day refresher trigger','Surveyor, New Building Surveyor, Plan Appraiser, Auditor, Technical Authority','180 days before expiry, assign refresher training and CPD check.','days_remaining <= 180','Create refresher task and notify person, trainer, competency manager.','Competency Manager, Trainer','Active'),
-                ('POL-REAUTH-90','90-day mandatory assessment','All authorized roles','90 days before expiry, require MCQ/case assessment and monitoring evidence review.','days_remaining <= 90','Block renewal unless assessment is passed.','Technical Authority, QMR','Active'),
-                ('POL-EXPIRY-BLOCK','Expiry auto restriction','All authorized roles','Expired authorization cannot be used for job assignment.','expiry_date < today','Set state to Expired and block job assignment.','Survey Ops Manager, Admin','Active'),
-                ('POL-ACTIVITY-DECAY','Competency activity decay','Surveyor, New Building Surveyor, Plan Appraiser, Auditor','No activity within defined period triggers review.','activity_count low or last_activity_date old','Set risk Yellow/Red and require monitoring.','Technical Monitor','Active'),
-                ('POL-RULE-UPDATE','Rule update training trigger','Affected roles/scopes','Rule, circular or procedure update requires awareness training and acknowledgment.','new rule impact record','Notify affected personnel and track completion.','Rule Development Rep, Trainer','Active'),
-                ('POL-BOARD','Quarterly competency board','All technical authorization holders','Quarterly review of restrictions, suspensions, CPD, monitoring and reauthorization.','quarterly cycle','Competency Board decision recorded.','Management, QMR, Technical Authority','Active'),
-            ]
-            for p in policies:
-                db_insert('authorization_lifecycle_policy_v20', {'policy_id':p[0],'policy_name':p[1],'applies_to_roles':p[2],'rule_statement':p[3],'trigger_condition':p[4],'system_action':p[5],'escalation_to':p[6],'status':p[7],'created_on':now()})
-        if db_all('refresher_requirements_v20').empty:
-            rows = [
-                ('Surveyor','Annual / Intermediate / Renewal / Damage Survey','Expiry -180 days','RO Code refresher; Survey Reporting; Latest Rule Updates','Yes',80,24,'Yes','Yes','Yes'),
-                ('New Building Surveyor','Hull / Machinery / Electrical / Trials','Expiry -180 days','IACS UR Z23; ITP; Material/NDT; Trials refresher','Yes',80,24,'Yes','Yes','Yes'),
-                ('Plan Appraiser','Hull / Machinery / Electrical / Statutory / Alternative Fuels / Materials','Expiry -180 days','Domain Rules; Comment Quality; Drawing Control refresher','Yes',80,24,'Yes','Yes','Yes'),
-                ('ISM/ISPS/MLC Auditor','ISM / ISPS / MLC','Expiry -180 days','Audit techniques; Code updates; Reporting refresher','Yes',80,24,'Yes','Yes','Yes'),
-                ('Technical Authority','Technical Approval / Interpretation','Expiry -365 days','Rule interpretation; Technical governance; Lessons learned','Yes',85,32,'Yes','Yes','Yes'),
-            ]
-            for r in rows:
-                db_insert('refresher_requirements_v20', {'requirement_id':uid('REQ'), 'target_role':r[0], 'authorization_scope':r[1], 'trigger_type':r[2], 'trigger_days_before_expiry':180, 'mandatory_courses':r[3], 'mandatory_mcq':r[4], 'minimum_score':r[5], 'cpd_hours_required':r[6], 'rule_update_training_required':r[7], 'technical_interview_required':r[8], 'practical_monitoring_required':r[9], 'created_by':'System', 'created_on':now()})
-        if db_all('rule_update_training_impact_v20').empty:
-            db_insert('rule_update_training_impact_v20', {'impact_id':uid('RULEIMP'), 'source_type':'IACS / IMO / Flag / PSB Procedure', 'rule_reference':'Example: IACS UR / IMO Circular / Flag Instruction', 'change_summary':'New rule or circular requires awareness, MCQ and controlled acknowledgment.', 'affected_roles':'Surveyor, New Building Surveyor, Plan Appraiser, Technical Authority, QMR', 'affected_scopes':'Affected survey/plan/statutory domains', 'required_training':'Rule update briefing + MCQ + acknowledgment', 'required_mcq':'Yes', 'due_date':'Within 30 days of release', 'notification_status':'Ready', 'completion_status':'Open', 'created_by':'System', 'created_on':now()})
-    except Exception:
-        pass
-
-
-def _v20_status_color(days, cpd_done=0, cpd_req=0):
-    try:
-        days=int(days)
-    except Exception:
-        days=9999
-    try:
-        cpd_done=float(cpd_done or 0); cpd_req=float(cpd_req or 0)
-    except Exception:
-        cpd_done=0; cpd_req=0
-    if days < 0:
-        return 'Red', 'Expired: suspend until reauthorization'
-    if days <= 30:
-        return 'Red', 'Immediate board review required'
-    if days <= 90:
-        return 'Yellow', 'Mandatory assessment and monitoring due'
-    if cpd_req and cpd_done < cpd_req:
-        return 'Yellow', 'CPD gap must be closed'
-    return 'Green', 'Maintain monitoring and CPD'
-
-
-def authorization_lifecycle_page(actor: dict) -> None:
-    st.title('🔁 Authorization Lifecycle')
-    st.caption('Career-long authorization control for Surveyors, New Building Surveyors, Plan Appraisers, Auditors, Technical Authorities and Technical Monitors.')
-    tabs = st.tabs(['Lifecycle Register','Create / Update','Policies','Auto risk calculation'])
-    with tabs[0]:
-        df=db_all('authorization_lifecycle_v20')
-        if not df.empty:
-            metrics([('Authorizations', len(df)), ('Expired', len(df[df['state'].astype(str).str.contains('Expired',case=False,na=False)])), ('Reauth Due', len(df[df['state'].astype(str).str.contains('Due',case=False,na=False)])), ('Red Risk', len(df[df['risk_color'].astype(str).str.contains('Red',case=False,na=False)]))])
-        table(df)
-    with tabs[1]:
-        with st.form('auth_lifecycle_form_v20'):
-            c1,c2,c3=st.columns(3)
-            users=db_all('users')
-            person_opt=''
-            if not users.empty:
-                person_opt=c1.selectbox('Person', users['name'].astype(str)+' — '+users['user_id'].astype(str))
-            role=c2.selectbox('Role', ['Surveyor','New Building Surveyor','Plan Appraiser','ISM/ISPS/MLC Auditor','Technical Authority','Technical Monitor','Principal Surveyor','Chief Plan Appraiser'])
-            scope=c3.text_input('Authorization Scope / Domain', value='Annual Survey / Electrical / Hull / ISM etc.')
-            state=c1.selectbox('State', ['Authorized','Provisionally Authorized','Restricted','Suspended','Expired','Reauthorization Due'])
-            issue=c2.date_input('Issue Date')
-            expiry=c3.date_input('Expiry Date')
-            cpd_req=c1.number_input('Required CPD hours', min_value=0.0, value=24.0)
-            cpd_done=c2.number_input('Completed CPD hours', min_value=0.0, value=0.0)
-            activity_count=c3.number_input('Relevant activity count', min_value=0, value=0)
-            if st.form_submit_button('Save lifecycle record'):
-                uid_val=''; name=''
-                if person_opt and ' — ' in person_opt:
-                    name, uid_val=person_opt.rsplit(' — ',1)
-                days=(expiry-date.today()).days
-                risk,next_action=_v20_status_color(days, cpd_done, cpd_req)
-                rec={'lifecycle_id':uid('LIFE'),'user_id':uid_val,'person_name':name,'role_name':role,'authorization_scope':scope,'authorization_domain':scope,'state':state,'issue_date':str(issue),'expiry_date':str(expiry),'days_remaining':days,'refresher_due_date':str(expiry - timedelta(days=180)),'monitoring_due_date':str(expiry - timedelta(days=60)),'cpd_required_hours':cpd_req,'cpd_completed_hours':cpd_done,'last_activity_date':'','activity_count':activity_count,'risk_color':risk,'next_action':next_action,'owner_role':actor_get(actor,'role'),'created_on':now(),'updated_on':now()}
-                db_insert('authorization_lifecycle_v20', rec)
-                audit('Authorization Lifecycle Saved', f'{name} / {scope} / {state}', actor=actor)
-                st.success(f'Record saved. Risk: {risk}. Next action: {next_action}')
-    with tabs[2]:
-        table(db_all('authorization_lifecycle_policy_v20'))
-    with tabs[3]:
-        st.markdown("""
-**Automation logic**
-
-- 180 days before expiry: assign refresher training and CPD gap task.  
-- 90 days before expiry: require MCQ/case assessment and monitoring review.  
-- 60 days before expiry: technical monitoring/interview evidence required.  
-- 30 days before expiry: Competency Board review must be completed.  
-- Expiry date crossed: state becomes Expired and job assignment is blocked.  
-- Rule/circular update: impacted scopes receive mandatory refresher and acknowledgment.
-""")
-
-
-def cpd_refresher_control_page(actor: dict) -> None:
-    st.title('📚 CPD & Refresher Control')
-    st.caption('Controls CPD hours, refreshers, rule update training and reauthorization readiness for already-authorized personnel.')
-    tabs=st.tabs(['Requirements','CPD Records','Add CPD / Refresher'])
-    with tabs[0]: table(db_all('refresher_requirements_v20'))
-    with tabs[1]: table(db_all('cpd_records_v20'))
-    with tabs[2]:
-        with st.form('cpd_form_v20'):
-            c1,c2,c3=st.columns(3)
-            users=db_all('users')
-            person_opt=c1.selectbox('Person', [''] + ((users['name'].astype(str)+' — '+users['user_id'].astype(str)).tolist() if not users.empty else []))
-            act=c2.selectbox('Activity Type', ['Refresher Training','Rule Update Training','Seminar','Conference','Technical Paper','Internal Training','External Training','Technical Circular Briefing'])
-            title=c3.text_input('Title')
-            provider=c1.text_input('Provider', value='PSB')
-            completed=c2.date_input('Date completed')
-            hours=c3.number_input('CPD Hours', min_value=0.0, step=1.0)
-            scope=c1.text_input('Linked Scope')
-            evidence=c2.text_input('Evidence link / file ref')
-            status=c3.selectbox('Status', ['Pending Approval','Approved','Rejected'])
-            if st.form_submit_button('Save CPD / Refresher'):
-                name=''; user=''
-                if ' — ' in person_opt:
-                    name,user=person_opt.rsplit(' — ',1)
-                db_insert('cpd_records_v20', {'cpd_id':uid('CPD'),'user_id':user,'person_name':name,'activity_type':act,'title':title,'provider':provider,'date_completed':str(completed),'hours':hours,'linked_scope':scope,'evidence_link':evidence,'approved_by':actor_get(actor,'name'),'status':status,'created_on':now()})
-                audit('CPD Record Saved', f'{name} / {title} / {hours}h', actor=actor)
-                st.success('CPD/refresher record saved.')
-
-
-def monitoring_schedule_page(actor: dict) -> None:
-    st.title('🧭 Monitoring Schedule')
-    st.caption('Annual and reauthorization monitoring plan for authorized Surveyors, Plan Appraisers, Auditors and Technical Authorities.')
-    tabs=st.tabs(['Monitoring Register','Create Monitoring','Close / Score'])
-    with tabs[0]: table(db_all('monitoring_schedule_v20'))
-    with tabs[1]:
-        with st.form('monitoring_form_v20'):
-            c1,c2,c3=st.columns(3)
-            users=db_all('users')
-            person=c1.selectbox('Person', [''] + ((users['name'].astype(str)+' — '+users['user_id'].astype(str)).tolist() if not users.empty else []))
-            role=c2.selectbox('Role', ['Surveyor','New Building Surveyor','Plan Appraiser','ISM/ISPS/MLC Auditor','Technical Authority','Technical Monitor'])
-            scope=c3.text_input('Scope')
-            mtype=c1.selectbox('Monitoring Type', ['Annual Monitoring','Reauthorization Monitoring','Rule Update Impact Monitoring','Performance Concern Monitoring','Peer Review Monitoring'])
-            due=c2.date_input('Due Date')
-            monitor=c3.text_input('Monitor Name')
-            if st.form_submit_button('Create Monitoring Task'):
-                name=''; user=''
-                if ' — ' in person: name,user=person.rsplit(' — ',1)
-                db_insert('monitoring_schedule_v20', {'monitoring_id':uid('MON'),'user_id':user,'person_name':name,'role_name':role,'authorization_scope':scope,'monitoring_type':mtype,'due_date':str(due),'monitor_id':'','monitor_name':monitor,'status':'Open','score':0,'finding_summary':'','corrective_action':'','closure_status':'Open','created_on':now(),'updated_on':now()})
-                audit('Monitoring Scheduled', f'{name} / {scope}', actor=actor)
-                st.success('Monitoring task created.')
-    with tabs[2]:
-        df=db_all('monitoring_schedule_v20')
-        if df.empty: st.info('No monitoring records yet.')
-        else:
-            opt=st.selectbox('Select monitoring', df['person_name'].astype(str)+' / '+df['authorization_scope'].astype(str)+' — '+df['monitoring_id'].astype(str))
-            mid=opt.split(' — ')[-1]
-            c1,c2=st.columns(2)
-            score=c1.slider('Score', 0, 100, 80)
-            status=c2.selectbox('Status', ['Open','Completed','Needs CAPA','Escalated'])
-            finding=st.text_area('Finding summary')
-            action=st.text_area('Corrective action')
-            if st.button('Update Monitoring Result'):
-                db_update('monitoring_schedule_v20','monitoring_id',mid, {'score':score,'status':status,'finding_summary':finding,'corrective_action':action,'closure_status':'Closed' if status=='Completed' else 'Open','updated_on':now()})
-                audit('Monitoring Result Updated', mid, actor=actor)
-                st.success('Monitoring updated.')
-
-
-def competency_board_review_page(actor: dict) -> None:
-    st.title('🏛️ Competency Board Review')
-    st.caption('Quarterly board review for authorizations, restrictions, suspensions, reauthorizations, CPD and monitoring evidence.')
-    tabs=st.tabs(['Board Register','Create Board Decision','Board Rules'])
-    with tabs[0]: table(db_all('competency_board_reviews_v20'))
-    with tabs[1]:
-        with st.form('board_form_v20'):
-            c1,c2,c3=st.columns(3)
-            period=c1.text_input('Board Period', value=f'Q{((date.today().month-1)//3)+1}-{date.today().year}')
-            users=db_all('users')
-            person=c2.selectbox('Person', [''] + ((users['name'].astype(str)+' — '+users['user_id'].astype(str)).tolist() if not users.empty else []))
-            role=c3.selectbox('Role', ['Surveyor','New Building Surveyor','Plan Appraiser','ISM/ISPS/MLC Auditor','Technical Authority','Technical Monitor'])
-            scope=c1.text_input('Scope Reviewed')
-            evidence=c2.selectbox('Evidence Pack', ['Complete','Incomplete','Returned'])
-            refresher=c3.selectbox('Refresher Status', ['Completed','Pending','Not Required','Failed'])
-            cpd=c1.selectbox('CPD Status', ['Completed','Gap','Not Required'])
-            monitoring=c2.selectbox('Monitoring Status', ['Completed','Pending','Finding Open','Not Required'])
-            performance=c3.selectbox('Performance Status', ['Acceptable','Needs Improvement','Unsatisfactory'])
-            decision=st.selectbox('Board Decision', ['Renew Authorization','Continue Authorization','Restrict Scope','Suspend Authorization','Require Additional Training','Reject Renewal','Return for Evidence'])
-            remarks=st.text_area('Board Remarks')
-            if st.form_submit_button('Save Board Decision'):
-                name=''; user=''
-                if ' — ' in person: name,user=person.rsplit(' — ',1)
-                db_insert('competency_board_reviews_v20', {'review_id':uid('BOARD'),'board_period':period,'user_id':user,'person_name':name,'role_name':role,'scope_reviewed':scope,'evidence_pack_status':evidence,'refresher_status':refresher,'cpd_status':cpd,'monitoring_status':monitoring,'performance_status':performance,'board_decision':decision,'restriction_action':decision if 'Restrict' in decision else '', 'suspension_action':decision if 'Suspend' in decision else '', 'remarks':remarks,'reviewed_by':actor_get(actor,'name'),'created_on':now()})
-                audit('Competency Board Decision', f'{name} / {scope} / {decision}', actor=actor)
-                st.success('Board decision saved.')
-    with tabs[2]: table(db_all('authorization_lifecycle_policy_v20'))
-
-
-def rule_update_training_impact_page(actor: dict) -> None:
-    st.title('📢 Rule Update Training Impact')
-    st.caption('When IMO/IACS/Flag/PSB rules change, the system identifies affected roles/scopes and creates refresher training actions.')
-    tabs=st.tabs(['Impact Register','Create Impact'])
-    with tabs[0]: table(db_all('rule_update_training_impact_v20'))
-    with tabs[1]:
-        with st.form('rule_impact_form_v20'):
-            c1,c2,c3=st.columns(3)
-            source=c1.selectbox('Source', ['IMO Circular','IACS UR/UI/PR','Flag Instruction','PSB Procedure','Internal Technical Circular','Class Rule'])
-            ref=c2.text_input('Reference')
-            due=c3.date_input('Due Date')
-            summary=st.text_area('Change Summary')
-            affected_roles=st.multiselect('Affected Roles', ['Surveyor','New Building Surveyor','Plan Appraiser','ISM/ISPS/MLC Auditor','Technical Authority','QMR','Trainer','Tutor/Mentor'], default=['Surveyor','Plan Appraiser'])
-            scopes=st.text_input('Affected Scopes')
-            training=st.text_input('Required Training / Briefing')
-            mcq=st.selectbox('MCQ Required', ['Yes','No'])
-            if st.form_submit_button('Create Rule Training Impact'):
-                db_insert('rule_update_training_impact_v20', {'impact_id':uid('RULEIMP'),'source_type':source,'rule_reference':ref,'change_summary':summary,'affected_roles':', '.join(affected_roles),'affected_scopes':scopes,'required_training':training,'required_mcq':mcq,'due_date':str(due),'notification_status':'Pending Notification','completion_status':'Open','created_by':actor_get(actor,'name'),'created_on':now()})
-                audit('Rule Update Training Impact Created', ref, actor=actor)
-                st.success('Impact record created. Trainer/CPD Coordinator should assign refresher training.')
-
-
-def reauthorization_status_center_page(actor: dict) -> None:
-    st.title('✅ Reauthorization Status Center')
-    st.caption('Personal and management view of authorization validity, refreshers, CPD, monitoring and next actions.')
-    df=db_all('authorization_lifecycle_v20')
-    role=actor_get(actor,'role')
-    user_id=actor_get(actor,'user_id')
-    if role in ['Surveyor','New Building Surveyor','Plan Appraiser','ISM/ISPS/MLC Auditor','Technical Authority','Technical Monitor'] and not df.empty:
-        df=df[df['user_id'].astype(str)==str(user_id)]
-    if not df.empty:
-        metrics([('Records', len(df)), ('Red', len(df[df['risk_color'].astype(str)=='Red'])), ('Yellow', len(df[df['risk_color'].astype(str)=='Yellow'])), ('Green', len(df[df['risk_color'].astype(str)=='Green']))])
-    table(df)
-    st.subheader('What must be completed to keep authorization valid')
-    st.markdown("""
-- Refresher training before expiry.  
-- Rule update training when applicable.  
-- CPD hours completed and approved.  
-- Annual/reauthorization monitoring completed.  
-- Technical interview or board review if required.  
-- No open critical NCR/CAPA, suspension or restriction preventing scope use.
-""")
-
-
-def authorization_lifecycle_gap_closure_page(actor: dict) -> None:
-    st.title('🔒 Authorization Lifecycle Gap Closure')
-    rows=[
-        {'Gap':'Surveyor/Plan Appraiser reauthorization not only trainee-based','V20 Closure':'Lifecycle register for already-authorized personnel','Status':'Closed'},
-        {'Gap':'Refresher training requirement','V20 Closure':'CPD & Refresher Control with role/scope rules','Status':'Closed'},
-        {'Gap':'Authorization expiry trigger','V20 Closure':'180/90/60/30-day policy triggers and state model','Status':'Closed'},
-        {'Gap':'Rule updates not tied to authorization','V20 Closure':'Rule Update Training Impact auto-identifies affected roles/scopes','Status':'Closed'},
-        {'Gap':'Monitoring of authorized staff','V20 Closure':'Annual and reauthorization monitoring schedule','Status':'Closed'},
-        {'Gap':'Competency board review','V20 Closure':'Quarterly Competency Board decision register','Status':'Closed'},
-        {'Gap':'Authorization states too simple','V20 Closure':'Authorized / Provisional / Restricted / Suspended / Expired / Reauthorization Due','Status':'Closed'},
-        {'Gap':'Personal visibility','V20 Closure':'Reauthorization Status Center for staff and managers','Status':'Closed'},
-    ]
-    table(pd.DataFrame(rows))
-    st.success('V20 adds the career-long authorization lifecycle required for Surveyors, NB Surveyors, Plan Appraisers, Auditors and Technical Authorities beyond trainee qualification.')
 
 
 if __name__ == "__main__":
