@@ -470,6 +470,11 @@ def exec_sql(sql: str, params: dict | None = None) -> None:
         conn.execute(text(sql), params or {})
 
 
+def db_execute(sql: str, params: dict | None = None) -> None:
+    """Alias for exec_sql to support schema helpers and migration calls."""
+    exec_sql(sql, params=params)
+
+
 def query_sql(sql: str, params: dict | None = None) -> pd.DataFrame:
     with get_engine().begin() as conn:
         return pd.read_sql(text(sql), conn, params=params or {})
