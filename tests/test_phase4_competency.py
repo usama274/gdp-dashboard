@@ -8,7 +8,10 @@ def test_build_competency_matrix_snapshot_uses_current_phase4_tables():
         [{"user_id": "U1", "test_status": "Passed", "status": "Completed"}]
     )
     witness_surveys = pd.DataFrame(
-        [{"user_id": "U1", "scope": "In-Service Surveyor - Hull", "outcome": "Pass"}]
+        [
+            {"user_id": "U1", "scope": "In-Service Surveyor - Hull", "outcome": "Pass"},
+            {"user_id": "U1", "scope": "In-Service Surveyor - Hull", "outcome": "Pass"},
+        ]
     )
     supervised_activities = pd.DataFrame(
         [{"user_id": "U1", "scope": "In-Service Surveyor - Hull", "activity_kind": "Independent Survey", "outcome": "Pass"}]
@@ -30,7 +33,7 @@ def test_build_competency_matrix_snapshot_uses_current_phase4_tables():
 
     assert result["training_status"] == "Completed"
     assert result["mcq_status"] == "Passed"
-    assert result["witness_completed"] == 1
+    assert result["witness_completed"] == 2
     assert result["supervised_completed"] == 1
     assert result["authorization_status"] == "Authorized"
     assert result["risk_level"] == "Low"
