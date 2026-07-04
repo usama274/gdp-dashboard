@@ -5265,6 +5265,56 @@ def ensure_v3_schema() -> None:
         pass
 
 
+def build_training_pathway_rule_record(
+    pathway: str,
+    scope: str,
+    rule_name: str,
+    required_training_ids: list[str] | str | None = None,
+    min_score: float = 80,
+    min_attendance: float = 80,
+    require_case_study: str = "Yes",
+    require_practical_assignment: str = "Yes",
+    required_witness_count: int = 2,
+    required_supervised_count: int = 1,
+    required_joint_review_count: int = 0,
+    required_independent_review_count: int = 0,
+    require_technical_interview: str = "Yes",
+    validity_months: int = 36,
+    created_by: str = "System",
+    created_on: str | None = None,
+    status: str = "Active",
+    remarks: str = "",
+) -> dict:
+    """Build a canonical progression-gate record for the Phase 5 eligibility engine."""
+    if isinstance(required_training_ids, str):
+        training_ids = required_training_ids
+    elif required_training_ids is None:
+        training_ids = ""
+    else:
+        training_ids = ", ".join([str(x).strip() for x in required_training_ids if str(x).strip()])
+    return {
+        "rule_id": uid("RULE"),
+        "pathway": pathway,
+        "scope": scope,
+        "rule_name": rule_name,
+        "required_training_ids": training_ids,
+        "min_score": min_score,
+        "min_attendance": min_attendance,
+        "require_case_study": require_case_study,
+        "require_practical_assignment": require_practical_assignment,
+        "required_witness_count": required_witness_count,
+        "required_supervised_count": required_supervised_count,
+        "required_joint_review_count": required_joint_review_count,
+        "required_independent_review_count": required_independent_review_count,
+        "require_technical_interview": require_technical_interview,
+        "validity_months": validity_months,
+        "created_by": created_by,
+        "created_on": created_on or now(),
+        "status": status,
+        "remarks": remarks,
+    }
+
+
 def seed_v3_defaults() -> None:
     """Seed default rules and gap-review rows only if absent."""
     rules = db_all("training_pathway_rules")
@@ -5280,16 +5330,23 @@ def seed_v3_defaults() -> None:
             ("Plan Appraiser", "Electrical & Automation", "Plan Appraisal Electrical Eligibility", 80, 80, 0, 0, 2, 1, "Yes"),
         ]
         for pathway, scope, name, score, attendance, wit, sup, joint, indep, interview in default_rules:
-            db_insert("training_pathway_rules", {
-                "rule_id": uid("RULE"), "pathway": pathway, "scope": scope, "rule_name": name,
-                "required_training_ids": "", "min_score": score, "min_attendance": attendance,
-                "require_case_study": "Yes", "require_practical_assignment": "Yes" if pathway != "Plan Appraiser" else "No",
-                "required_witness_count": wit, "required_supervised_count": sup,
-                "required_joint_review_count": joint, "required_independent_review_count": indep,
-                "require_technical_interview": interview, "validity_months": 36,
-                "created_by": "System", "created_on": now(), "status": "Active",
-                "remarks": "Default PSB/IACS-style progression gate. Trainer may customize required training IDs."
-            })
+            db_insert("training_pathway_rules", build_training_pathway_rule_record(
+                pathway=pathway,
+                scope=scope,
+                rule_name=name,
+                min_score=score,
+                min_attendance=attendance,
+                require_case_study="Yes",
+                require_practical_assignment="Yes" if pathway != "Plan Appraiser" else "No",
+                required_witness_count=wit,
+                required_supervised_count=sup,
+                required_joint_review_count=joint,
+                required_independent_review_count=indep,
+                require_technical_interview=interview,
+                validity_months=36,
+                created_by="System",
+                remarks="Default PSB/IACS-style progression gate. Trainer may customize required training IDs.",
+            ))
     reqs = db_all("reauthorization_requirements_v3")
     if reqs.empty:
         for scope in PSB_AUTH_SCOPES:
@@ -5546,7 +5603,26 @@ def training_practical_eligibility_page(actor: dict) -> None:
             remarks = st.text_area("Remarks")
             if st.form_submit_button("Save / Add Progression Gate"):
                 ids = [x.split(" — ")[-1] for x in selected]
-                db_insert("training_pathway_rules", {"rule_id":uid("RULE"),"pathway":pathway,"scope":scope,"rule_name":rule_name,"required_training_ids":", ".join(ids),"min_score":min_score,"min_attendance":min_att,"require_case_study":req_case,"require_practical_assignment":req_prac,"required_witness_count":wit,"required_supervised_count":sup,"required_joint_review_count":joint,"required_independent_plan_count":indep,"require_technical_interview":req_interview,"validity_months":validity,"created_by":actor_get(actor,"name"),"created_on":now(),"status":"Active","remarks":remarks})
+                db_insert("training_pathway_rules", build_training_pathway_rule_record(
+                    pathway=pathway,
+                    scope=scope,
+                    rule_name=rule_name,
+                    required_training_ids=ids,
+                    min_score=min_score,
+                    min_attendance=min_att,
+                    require_case_study=req_case,
+                    require_practical_assignment=req_prac,
+                    required_witness_count=wit,
+                    required_supervised_count=sup,
+                    required_joint_review_count=joint,
+                    required_independent_review_count=indep,
+                    require_technical_interview=req_interview,
+                    validity_months=validity,
+                    created_by=actor_get(actor, "name"),
+                    created_on=now(),
+                    status="Active",
+                    remarks=remarks,
+                ))
                 st.success("Progression gate saved. This controls when a trainee becomes eligible for practical training and authorization review.")
         table(db_all("training_pathway_rules"))
     with tabs[1]:

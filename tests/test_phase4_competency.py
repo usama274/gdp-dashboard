@@ -1,6 +1,33 @@
 import pandas as pd
 
-from app import build_competency_matrix_snapshot
+from app import build_competency_matrix_snapshot, build_training_pathway_rule_record
+
+
+def test_build_training_pathway_rule_record_uses_review_count_schema():
+    row = build_training_pathway_rule_record(
+        pathway="In-Service Surveyor",
+        scope="Annual Survey",
+        rule_name="Annual Survey Eligibility",
+        required_training_ids=["T1", "T2"],
+        min_score=80,
+        min_attendance=80,
+        require_case_study="Yes",
+        require_practical_assignment="Yes",
+        required_witness_count=2,
+        required_supervised_count=1,
+        required_joint_review_count=0,
+        required_independent_review_count=1,
+        require_technical_interview="Yes",
+        validity_months=36,
+        created_by="Admin",
+        created_on="2026-07-04",
+        status="Active",
+        remarks="",
+    )
+
+    assert row["required_independent_review_count"] == 1
+    assert row["required_joint_review_count"] == 0
+    assert row["required_training_ids"] == "T1, T2"
 
 
 def test_build_competency_matrix_snapshot_uses_current_phase4_tables():
