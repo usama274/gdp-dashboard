@@ -35,6 +35,8 @@ from maritime_integration import (
     register_maritime_pages,
 )
 from maritime_module import SURVEY_TYPES
+from modules.registry import module_registry
+from modules.maritime import MODULE_INFO as MARITIME_MODULE_INFO
 
 try:
     from supabase import create_client
@@ -1832,6 +1834,16 @@ def require_login() -> dict:
         login_page()
         st.stop()
     return st.session_state["user"]
+
+
+def register_builtin_pages() -> None:
+    """Register built-in page handlers with the application module registry."""
+    try:
+        module_registry.register_module(MARITIME_MODULE_INFO)
+        module_registry.register_page("Maritime Registry", maritime_registry_page, module_name="Maritime")
+        module_registry.register_page("Maritime Surveys", maritime_survey_center_page, module_name="Maritime")
+    except Exception:
+        pass
 
 
 def role_page_matrix() -> dict:
@@ -8986,6 +8998,7 @@ def main() -> None:
     st.set_page_config(page_title=APP_TITLE, page_icon="⚓", layout="wide")
     apply_style()
     register_maritime_pages()
+    register_builtin_pages()
     require_persistent_backend()
     init_db()
     ensure_maritime_schema()
