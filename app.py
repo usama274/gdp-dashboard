@@ -23,6 +23,18 @@ import streamlit.components.v1 as components
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
+from maritime_integration import (
+    render_certificate_management,
+    render_maritime_dashboard,
+    render_notification_center,
+    render_project_information,
+    render_security_summary,
+    render_ship_registry,
+    render_survey_checklist_editor,
+    render_theme_toggle,
+    register_maritime_pages,
+)
+
 try:
     from supabase import create_client
 except Exception:
@@ -1818,7 +1830,7 @@ def require_login() -> dict:
 
 def role_page_matrix() -> dict:
     """Professional role-based navigation for fast loading and clear accountability."""
-    common = ["Dashboard", "My Training", "My Certificates", "Knowledge Library"]
+    common = ["Dashboard", "Maritime Registry", "Maritime Surveys", "My Training", "My Certificates", "Knowledge Library"]
 
     v20_extra_pages = [
         "Authorization Lifecycle",
@@ -1882,6 +1894,7 @@ def sidebar(actor: dict) -> str:
     if LOGO_PATH.exists():
         st.sidebar.image(str(LOGO_PATH), width=95)
     st.sidebar.success(f"{actor_get(actor,'name')} ({actor_get(actor,'role')})")
+    render_theme_toggle()
     st.sidebar.caption(actor_get(actor, "email"))
     role = actor_get(actor, "role")
     pages = role_page_matrix().get(role, role_page_matrix().get("Trainee"))
@@ -8832,11 +8845,96 @@ def final_live_erp_launch_control_page(actor: dict) -> None:
         (st.success if v else st.error)(f"{'✅' if v else '❌'} {k}")
     st.warning("Final production go-live still requires real provider API keys, signed-off UAT evidence, and database triggers/RLS applied in Supabase.")
 
+
+def ensure_maritime_schema() -> None:
+    stmts = [
+        """create table if not exists ships (
+            ship_id text primary key, ship_name text, classification_number text, imo_number text,
+            former_name text, flag text, call_sign text, owner text, ship_type text, purpose text,
+            port_of_registry text, year_built text, builder text, class_status text, survey_status text,
+            certificate_status text, created_on text, updated_on text
+        )""",
+        """create table if not exists ship_surveys (
+            survey_id text primary key, ship_id text, survey_type text, survey_status text, survey_due_date text,
+            surveyor text, observations text, recommendations text, corrective_actions text, completion_pct integer,
+            remarks text, digital_signature text, created_on text, updated_on text
+        )""",
+        """create table if not exists ship_certificates (
+            certificate_id text primary key, ship_id text, certificate_name text, certificate_number text,
+            category text, issue_date text, expiry_date text, issuing_authority text, status text,
+            remarks text, attachments text, created_on text, updated_on text
+        )""",
+        """create table if not exists maritime_notifications (
+            notification_id text primary key, recipient text, event_type text, message text, priority text,
+            status text, created_on text, updated_on text
+        )""",
+        "create index if not exists idx_ships_search on ships(ship_name, imo_number, flag, owner, class_status)",
+        "create index if not exists idx_ship_surveys_ship on ship_surveys(ship_id, survey_status)",
+        "create index if not exists idx_ship_certificates_ship on ship_certificates(ship_id, expiry_date, status)",
+        "create index if not exists idx_maritime_notifications_recipient on maritime_notifications(recipient, status)",
+    ]
+    for stmt in stmts:
+        exec_sql(stmt)
+    seed_maritime_demo_data()
+
+
+def seed_maritime_demo_data() -> None:
+    if not db_all("ships").empty:
+        return
+    sample_ships = [
+        {"ship_id": uid("SHIP"), "ship_name": "MV Ocean Horizon", "classification_number": "CL-1001", "imo_number": "9701234", "former_name": "MV North Star", "flag": "Pakistan", "call_sign": "A1B2C3", "owner": "Maritime Holdings", "ship_type": "Container", "purpose": "Commercial", "port_of_registry": "Karachi", "year_built": "2018", "builder": "Karachi Shipyard", "class_status": "Active", "survey_status": "Current", "certificate_status": "Valid", "created_on": now(), "updated_on": now()},
+        {"ship_id": uid("SHIP"), "ship_name": "MV Blue Wave", "classification_number": "CL-1002", "imo_number": "9705678", "former_name": "", "flag": "UAE", "call_sign": "D4E5F6", "owner": "Blue Marine", "ship_type": "Tanker", "purpose": "Cargo", "port_of_registry": "Dubai", "year_built": "2016", "builder": "Dubai Shipbuilding", "class_status": "Active", "survey_status": "Due Soon", "certificate_status": "Valid", "created_on": now(), "updated_on": now()},
+    ]
+    for ship in sample_ships:
+        db_insert("ships", ship)
+    sample_surveys = [
+        {"survey_id": uid("SURV"), "ship_id": sample_ships[0]["ship_id"], "survey_type": "Annual Survey", "survey_status": "Pending", "survey_due_date": add_months(1), "surveyor": "A. Khan", "observations": "Minor maintenance items", "recommendations": "Complete deck inspection", "corrective_actions": "Schedule maintenance", "completion_pct": 40, "remarks": "Awaiting review", "digital_signature": "", "created_on": now(), "updated_on": now()},
+    ]
+    for survey in sample_surveys:
+        db_insert("ship_surveys", survey)
+    sample_certificates = [
+        {"certificate_id": uid("CERT"), "ship_id": sample_ships[0]["ship_id"], "certificate_name": "Safety Equipment", "certificate_number": "CERT-001", "category": "Safety Equipment", "issue_date": today(), "expiry_date": add_months(6), "issuing_authority": "PSB", "status": "Valid", "remarks": "Renewal due soon", "attachments": "", "created_on": now(), "updated_on": now()},
+    ]
+    for cert in sample_certificates:
+        db_insert("ship_certificates", cert)
+    sample_notifications = [
+        {"notification_id": uid("NOTI"), "recipient": "Survey Team", "event_type": "Survey Due", "message": "Annual survey due for MV Ocean Horizon", "priority": "High", "status": "Pending", "created_on": now(), "updated_on": now()},
+    ]
+    for note in sample_notifications:
+        db_insert("maritime_notifications", note)
+
+
+def maritime_registry_page(actor: dict) -> None:
+    st.title("⚓ Maritime Registry")
+    st.caption("A production-ready ship registry with search, filtering, and profile-ready data.")
+    ships = []
+    try:
+        ships = db_all("ships").to_dict("records") if not db_all("ships").empty else []
+    except Exception:
+        ships = []
+    render_maritime_dashboard(ships, db_all("ship_surveys").to_dict("records") if not db_all("ship_surveys").empty else [], db_all("ship_certificates").to_dict("records") if not db_all("ship_certificates").empty else [], db_all("maritime_notifications").to_dict("records") if not db_all("maritime_notifications").empty else [])
+    render_ship_registry(ships)
+    render_security_summary()
+
+
+def maritime_survey_center_page(actor: dict) -> None:
+    st.title("🧭 Survey Center")
+    st.caption("Dynamic digital survey checklists and survey status tracking.")
+    survey_type = st.selectbox("Survey Type", SURVEY_TYPES)
+    render_survey_checklist_editor(survey_type)
+    notifications = db_all("maritime_notifications").to_dict("records") if not db_all("maritime_notifications").empty else []
+    certificates = db_all("ship_certificates").to_dict("records") if not db_all("ship_certificates").empty else []
+    render_notification_center(notifications)
+    render_certificate_management(certificates)
+
+
 def main() -> None:
     st.set_page_config(page_title=APP_TITLE, page_icon="⚓", layout="wide")
     apply_style()
+    register_maritime_pages()
     require_persistent_backend()
     init_db()
+    ensure_maritime_schema()
     ensure_v2_schema()
     seed_v2_role_improvements()
     ensure_v3_schema()
@@ -8867,12 +8965,16 @@ def main() -> None:
     actor = require_login()
     run_training_overdue_engine()
     header()
+    if actor:
+        render_project_information()
     show_popup_notifications(actor)
     page = sidebar(actor)
     if page == "CEO Dashboard": ceo_dashboard_page(actor)
     elif page == "My Training": my_training_page(actor)
     elif page == "Assigned Candidates": assigned_candidates_page(actor)
     elif page == "Dashboard": dashboard_page(actor)
+    elif page == "Maritime Registry": maritime_registry_page(actor)
+    elif page == "Maritime Surveys": maritime_survey_center_page(actor)
     elif page == "Admin": admin_page(actor)
     elif page == "Training Matrix": training_matrix_page(actor)
     elif page == "Training": training_page(actor)
