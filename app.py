@@ -34,9 +34,8 @@ from maritime_integration import (
     render_theme_toggle,
     register_maritime_pages,
 )
-from maritime_module import SURVEY_TYPES
+from modules import autoload_modules
 from modules.registry import module_registry
-from modules.maritime import MODULE_INFO as MARITIME_MODULE_INFO
 
 try:
     from supabase import create_client
@@ -44,9 +43,12 @@ except Exception:
     create_client = None
 
 try:
-    from PyPDF2 import PdfReader
+    from pypdf import PdfReader
 except Exception:
-    PdfReader = None
+    try:
+        from PyPDF2 import PdfReader
+    except Exception:
+        PdfReader = None
 
 try:
     import docx
@@ -1839,9 +1841,179 @@ def require_login() -> dict:
 def register_builtin_pages() -> None:
     """Register built-in page handlers with the application module registry."""
     try:
-        module_registry.register_module(MARITIME_MODULE_INFO)
-        module_registry.register_page("Maritime Registry", maritime_registry_page, module_name="Maritime")
-        module_registry.register_page("Maritime Surveys", maritime_survey_center_page, module_name="Maritime")
+        module_registry.register_module(
+            {
+                "name": "Core",
+                "description": "Core application pages and workflows.",
+                "version": "1.0.0",
+            }
+        )
+        autoload_modules(
+            module_registry,
+            {
+                "maritime_registry": maritime_registry_page,
+                "maritime_surveys": maritime_survey_center_page,
+            },
+            dependencies={
+                "db_all": db_all,
+            },
+        )
+
+        builtin_pages = {
+            "CEO Dashboard": ceo_dashboard_page,
+            "My Training": my_training_page,
+            "Assigned Candidates": assigned_candidates_page,
+            "Dashboard": dashboard_page,
+            "Admin": admin_page,
+            "Training Matrix": training_matrix_page,
+            "Training": training_page,
+            "Files": files_page,
+            "Development Plans": development_plan_page,
+            "Competency": competency_page,
+            "Qualification Scopes": qualification_scopes_page,
+            "Practical/Witness": practical_page,
+            "Authorization": authorization_page,
+            "CRB": crb_page,
+            "Job Allocation": job_allocation_page,
+            "KPI": kpi_page,
+            "CPD": cpd_page,
+            "Knowledge Library": knowledge_page,
+            "QMS": qms_page,
+            "Revalidation": revalidation_page,
+            "Backup": backup_page,
+            "QR Verify": qr_verify_page,
+            "Technical Authority": technical_authority_page,
+            "Survey Report Review": survey_report_review_page,
+            "Plan Review QA": plan_review_quality_page,
+            "Competency NCR": competency_ncr_page,
+            "Gap Advisor": competency_gap_advisor_page,
+            "Annual Board": annual_competency_board_page,
+            "Restrictions": authorization_restrictions_page,
+            "Client Feedback": client_feedback_page,
+            "Succession": succession_planning_page,
+            "Workforce Planning": workforce_planning_page,
+            "Accreditation Readiness": accreditation_readiness_page,
+            "Interpretation Portal": interpretation_portal_page,
+            "Competency Matrix": competency_matrix_page,
+            "NB Survey Ops": survey_operations_page,
+            "In-Service Survey Ops": survey_operations_page,
+            "Designer Portal": designer_portal_page,
+            "Shipyard Portal": shipyard_portal_page,
+            "Drawing Revisions": drawing_revisions_page,
+            "Appraised Drawing Distribution": drawing_distribution_page,
+            "NCR Closure": ncr_closure_page,
+            "Role Activity Evaluation": role_activity_evaluation_page,
+            "Enterprise Upgrade Center": enterprise_upgrade_center_page,
+            "Audit Readiness Engine": audit_readiness_engine_page,
+            "Workforce Forecasting": workforce_forecasting_page,
+            "Enhanced Training Flow": enterprise_training_flow_page,
+            "Mobile Survey Evidence": mobile_survey_evidence_page,
+            "NB Stage Gate": new_building_stage_gate_page,
+            "Training Practical Eligibility": training_practical_eligibility_page,
+            "Digital Certificates": digital_certificates_page,
+            "My Certificates": my_certificates_page,
+            "Reauthorization Engine": reauthorization_engine_page,
+            "World-Class Gap Analysis": role_activity_worldclass_gap_page,
+            "World-Class Strong Controls": worldclass_strong_controls_page,
+            "Final Professional Closure": final_professional_closure_page,
+            "ERP Governance Hub": erp_governance_hub_page,
+            "Competency Manager": competency_manager_page,
+            "Survey Operations Manager": survey_ops_manager_page,
+            "Plan Approval Manager": plan_approval_manager_page,
+            "Document Control": document_controller_page,
+            "Technical Monitoring": technical_monitor_page,
+            "Client Owner Portal": client_owner_portal_page,
+            "Technical Knowledge Repository": technical_knowledge_repository_page,
+            "Advanced Practical Development": practical_development_page,
+            "Executive ERP Analytics": executive_erp_analytics_page,
+            "State-of-Art ERP Review": state_of_art_erp_review_page,
+            "Role Permission Matrix": role_permission_matrix_page,
+            "UI/UX & Performance Health": uiux_performance_health_page,
+            "Role Maturity Optimizer": role_maturity_optimizer_page,
+            "Workflow Task Center": workflow_task_center_page,
+            "Survey Logbook & Decay": survey_logbook_decay_page,
+            "Plan Peer Quality": plan_peer_quality_page,
+            "Controlled Transmittals": controlled_transmittals_page,
+            "Enterprise Health Center": enterprise_health_center_page,
+            "State-of-Art UI/UX Design": uiux_state_of_art_design_page,
+            "Performance Safeguards": performance_safeguards_page,
+            "Enterprise Search": enterprise_search_page,
+            "Knowledge Graph": knowledge_graph_page,
+            "AI Competency Advisor": ai_competency_advisor_page,
+            "Lessons Learned Portal": lessons_learned_portal_page,
+            "Enterprise Notification Engine": enterprise_notification_engine_page,
+            "Mobile App Center": mobile_app_center_page,
+            "Client Self Service": client_self_service_page,
+            "World-Class Information Flow": worldclass_information_flow_page,
+            "Enterprise Communication Hub": enterprise_communication_hub_page,
+            "Native Mobile Operations": native_mobile_operations_page,
+            "Strict Document Enforcement": strict_document_enforcement_page,
+            "Expanded Client Self-Service": expanded_client_self_service_page,
+            "Commercial Module": commercial_module_page,
+            "HR Integration Layer": hr_integration_layer_page,
+            "Rule Change Management": rule_change_management_page,
+            "Rule Development Automation": rule_development_automation_page,
+            "Enterprise Workflow Engine": enterprise_workflow_engine_page,
+            "Final ERP Completion Review": final_erp_completion_review_page,
+            "Production Security Center": production_security_center_page,
+            "External Portal Isolation": external_portal_isolation_page,
+            "Database Enforcement Center": database_enforcement_center_page,
+            "Real Integration Connectors": real_integration_connectors_page,
+            "Field Mobile App Blueprint": field_mobile_app_blueprint_page,
+            "Production Testing UAT": production_testing_uat_page,
+            "Workflow SLA Rules": workflow_sla_rules_page,
+            "UI/UX Final Polish": uiux_final_polish_page,
+            "Final Release Readiness": final_release_readiness_page,
+            "Final Live Integration Center": final_live_integration_center_page,
+            "Final Mobile PWA Operations": final_mobile_pwa_operations_page,
+            "Final Database Hard Rules": final_database_hard_rules_page,
+            "Final Portal Isolation": final_portal_isolation_page,
+            "Final Security Operations": final_security_operations_page,
+            "Final Role Landing UX": final_role_landing_ux_page,
+            "Final UAT Test Suite": final_uat_test_suite_page,
+            "Final Live ERP Launch Control": final_live_erp_launch_control_page,
+            "International ERP Final Review": international_erp_final_review_page,
+            "Finance & Commercial Control": finance_commercial_control_page,
+            "HR Availability & Leave Control": hr_availability_leave_control_page,
+            "IT Security Operations": it_security_operations_page,
+            "Legal Contract & Dispute Control": legal_contract_dispute_control_page,
+            "Customer Support Ticket Center": customer_support_ticket_center_page,
+            "Flag Administration Portal": flag_administration_portal_page,
+            "PSC / Insurance Viewer": psc_insurance_viewer_page,
+            "Manufacturer Vendor Portal": manufacturer_vendor_portal_page,
+            "Subcontracted Surveyor Workspace": subcontracted_surveyor_workspace_page,
+            "Client Certificate Center": client_certificate_center_page,
+            "Client Survey History": client_survey_history_page,
+            "Client Payment Center": client_payment_center_page,
+            "V15 Final Gap Closure Review": v15_final_gap_closure_review_page,
+            "V16 Production Readiness Center": v16_production_readiness_center_page,
+            "Live Integration Operations": v16_live_integration_operations_page,
+            "Immutable Audit Control": v16_immutable_audit_control_page,
+            "External Portal Data Isolation": v16_external_portal_data_isolation_page,
+            "Internal Classification Society Portal": v16_internal_class_society_portal_page,
+            "External Stakeholder Portal": v16_external_stakeholder_portal_page,
+            "Backend Communication Flow Validator": v16_backend_communication_flow_validator_page,
+            "Role UAT Matrix": v16_role_uat_matrix_page,
+            "Digital Signature Trust Center": v16_digital_signature_trust_center_page,
+            "Field PWA Operations": v16_field_pwa_operations_page,
+            "Finance HR Integration Verification": v16_finance_hr_integration_verification_page,
+            "Database Rules Verification": v16_database_rules_verification_page,
+            "Final V16 Gap Closure": v16_final_gap_closure_page,
+            "V17 Production Closure & Role Gap Review": v17_production_closure_role_gap_review_page,
+            "V18 Live Pre-Launch Testing": v18_live_prelaunch_testing_page,
+            "HR + Accounting System": v18_hr_accounting_system_page,
+            "V18 Final Launch Gap Closure": v18_final_launch_gap_closure_page,
+            "Authorization Lifecycle": authorization_lifecycle_page,
+            "CPD & Refresher Control": cpd_refresher_control_page,
+            "Monitoring Schedule": monitoring_schedule_page,
+            "Competency Board Review": competency_board_review_page,
+            "Rule Update Training Impact": rule_update_training_impact_page,
+            "Reauthorization Status Center": reauthorization_status_center_page,
+            "Authorization Lifecycle Gap Closure": authorization_lifecycle_gap_closure_page,
+            "Management": management_page,
+        }
+        for page_name, handler in builtin_pages.items():
+            module_registry.register_page(page_name, handler)
     except Exception:
         pass
 
@@ -4381,14 +4553,74 @@ def escalate_training_failure_or_delay(user_id: str, user_name: str, training_ti
         pass
 
 
+def build_competency_matrix_snapshot(
+    user_id: str,
+    scope: str,
+    pathway: str,
+    training_records: pd.DataFrame | None = None,
+    witness_records: pd.DataFrame | None = None,
+    supervised_records: pd.DataFrame | None = None,
+    authorization_requests: pd.DataFrame | None = None,
+    development_plans: pd.DataFrame | None = None,
+) -> dict[str, object]:
+    """Build a Phase 4 competency snapshot from the current evidence tables."""
+    training_records = training_records if training_records is not None else db_all("training_records")
+    witness_records = witness_records if witness_records is not None else db_all("witness_surveys")
+    supervised_records = supervised_records if supervised_records is not None else db_all("supervised_activities")
+    authorization_requests = authorization_requests if authorization_requests is not None else db_all("authorization_requests")
+    development_plans = development_plans if development_plans is not None else db_all("development_plans")
+
+    rec = training_records[training_records.get("user_id", pd.Series(dtype=str)).astype(str) == str(user_id)] if not training_records.empty else pd.DataFrame()
+    wit = witness_records[(witness_records.get("user_id", pd.Series(dtype=str)).astype(str) == str(user_id)) & (witness_records.get("scope", pd.Series(dtype=str)).astype(str) == str(scope)) & (witness_records.get("outcome", pd.Series(dtype=str)).astype(str) == "Pass")] if not witness_records.empty else pd.DataFrame()
+    sup = supervised_records[(supervised_records.get("user_id", pd.Series(dtype=str)).astype(str) == str(user_id)) & (supervised_records.get("scope", pd.Series(dtype=str)).astype(str) == str(scope)) & (supervised_records.get("outcome", pd.Series(dtype=str)).astype(str) == "Pass")] if not supervised_records.empty else pd.DataFrame()
+    au = authorization_requests[(authorization_requests.get("user_id", pd.Series(dtype=str)).astype(str) == str(user_id)) & (authorization_requests.get("scope", pd.Series(dtype=str)).astype(str) == str(scope)) & (authorization_requests.get("status", pd.Series(dtype=str)).astype(str).isin(["Management Approved", "Authorized", "CRB Approved", "QMS Reviewed", "Technical Reviewed", "Tutor Recommended", "Principal Reviewed"]))] if not authorization_requests.empty else pd.DataFrame()
+    open_plans = development_plans[(development_plans.get("user_id", pd.Series(dtype=str)).astype(str) == str(user_id)) & (development_plans.get("status", pd.Series(dtype=str)).astype(str) != "Completed")] if not development_plans.empty else pd.DataFrame()
+
+    training_status = "Completed" if (not rec.empty and (rec.get("status", pd.Series(dtype=str)).astype(str).isin(["Completed", "Passed"]).any() or rec.get("test_status", pd.Series(dtype=str)).astype(str).str.contains("Passed", case=False, na=False).any())) else "Gap"
+    mcq_status = "Passed" if (not rec.empty and rec.get("test_status", pd.Series(dtype=str)).astype(str).str.contains("Passed", case=False, na=False).any()) else "Gap"
+    witness_completed = int(len(wit))
+    supervised_completed = int(len(sup))
+    plan_joint_completed = int(len(sup[sup.get("activity_kind", pd.Series(dtype=str)).astype(str).str.contains("Joint Plan|Plan Review|Witness Plan Review", case=False, na=False)])) if not sup.empty else 0
+    plan_independent_completed = int(len(sup[sup.get("activity_kind", pd.Series(dtype=str)).astype(str).str.contains("Independent Plan", case=False, na=False)])) if not sup.empty else 0
+    auth_status = "Authorized" if not au.empty else "Not Authorized"
+    gaps = []
+    if training_status != "Completed":
+        gaps.append("training incomplete")
+    if mcq_status != "Passed":
+        gaps.append("MCQ not passed")
+    if pathway != "Plan Appraiser" and witness_completed < 2:
+        gaps.append("minimum 2 witness activities missing")
+    if pathway != "Plan Appraiser" and supervised_completed < 1:
+        gaps.append("minimum 1 supervised activity missing")
+    if pathway == "Plan Appraiser" and plan_joint_completed < 2:
+        gaps.append("joint plan reviews missing")
+    if pathway == "Plan Appraiser" and plan_independent_completed < 1:
+        gaps.append("independent plan review missing")
+    if not open_plans.empty:
+        gaps.append(f"{len(open_plans)} development plan item(s) still open")
+    return {
+        "training_status": training_status,
+        "mcq_status": mcq_status,
+        "witness_completed": witness_completed,
+        "supervised_completed": supervised_completed,
+        "plan_joint_completed": plan_joint_completed,
+        "plan_independent_completed": plan_independent_completed,
+        "authorization_status": auth_status,
+        "gap_summary": "; ".join(gaps) if gaps else "No major gap",
+        "risk_level": "High" if gaps and any("missing" in gap or "open" in gap for gap in gaps) else "Low",
+    }
+
+
 def competency_matrix_page(actor):
     st.header("Competency Matrix Engine")
     st.caption("Automatically compares each person's training, MCQ, witness, supervised, plan-review and authorization evidence against required scope.")
     ensure_v2_schema(); seed_v2_role_improvements()
     users = db_all("users")
-    practical = db_all("practical_activities")
-    records = db_all("training_records")
-    auth = db_all("authorizations")
+    training_records = db_all("training_records")
+    witness_records = db_all("witness_surveys")
+    supervised_records = db_all("supervised_activities")
+    authorization_requests = db_all("authorization_requests")
+    development_plans = db_all("development_plans")
     if users.empty:
         st.info("Create users first."); return
     domains = AUTHORIZATION_DISCIPLINES if 'AUTHORIZATION_DISCIPLINES' in globals() else SCOPES[:8]
@@ -4400,34 +4632,28 @@ def competency_matrix_page(actor):
     if target:
         uidv = selected_user.split(" — ")[-1]
         u = users[users["user_id"].astype(str)==uidv].iloc[0]
-        rec = records[records.get("user_id","").astype(str)==uidv] if not records.empty else pd.DataFrame()
-        prac = practical[practical.get("user_id","").astype(str)==uidv] if not practical.empty else pd.DataFrame()
-        au = auth[(auth.get("user_id","").astype(str)==uidv) & (auth.get("scope","").astype(str).str.contains(domain, case=False, na=False))] if not auth.empty else pd.DataFrame()
-        training_status = "Completed" if (not rec.empty and (rec.get("status","").astype(str)=="Completed").any()) else "Gap"
-        mcq_status = "Passed" if (not rec.empty and rec.get("test_status","").astype(str).str.contains("Passed", case=False, na=False).any()) else "Gap"
-        witness_completed = int(prac.get("activity_type", pd.Series(dtype=str)).astype(str).str.contains("Witness", case=False, na=False).sum()) if not prac.empty else 0
-        supervised_completed = int(prac.get("activity_type", pd.Series(dtype=str)).astype(str).str.contains("Supervised", case=False, na=False).sum()) if not prac.empty else 0
-        plan_joint_completed = int(prac.get("activity_type", pd.Series(dtype=str)).astype(str).str.contains("Joint Plan|Plan Review", case=False, na=False).sum()) if not prac.empty else 0
-        plan_independent_completed = int(prac.get("activity_type", pd.Series(dtype=str)).astype(str).str.contains("Independent Plan", case=False, na=False).sum()) if not prac.empty else 0
-        auth_status = "Authorized" if not au.empty else "Not Authorized"
-        gaps=[]
-        if training_status!="Completed": gaps.append("training incomplete")
-        if mcq_status!="Passed": gaps.append("MCQ not passed")
-        if pathway != "Plan Appraiser" and witness_completed < 2: gaps.append("minimum 2 witness activities missing")
-        if pathway != "Plan Appraiser" and supervised_completed < 1: gaps.append("minimum 1 supervised activity missing")
-        if pathway == "Plan Appraiser" and plan_joint_completed < 2: gaps.append("joint plan reviews missing")
-        if pathway == "Plan Appraiser" and plan_independent_completed < 1: gaps.append("independent plan review missing")
+        scope = f"{pathway} - {domain}" if pathway != "QMS Auditor" and pathway != "Industrial Surveyor" else domain
+        snapshot = build_competency_matrix_snapshot(
+            user_id=uidv,
+            scope=scope,
+            pathway=pathway,
+            training_records=training_records,
+            witness_records=witness_records,
+            supervised_records=supervised_records,
+            authorization_requests=authorization_requests,
+            development_plans=development_plans,
+        )
         db_insert("competency_matrix", {
             "matrix_id": uid("MAT"), "user_id": uidv, "user_name": u.get("name",""), "role": u.get("role",""),
-            "pathway": pathway, "domain": domain, "required_scope": f"{pathway} - {domain}", "required_training": "Core + domain modules",
-            "training_status": training_status, "mcq_status": mcq_status,
-            "witness_required": 0 if pathway=="Plan Appraiser" else 2, "witness_completed": witness_completed,
-            "supervised_required": 0 if pathway=="Plan Appraiser" else 1, "supervised_completed": supervised_completed,
-            "plan_joint_required": 2 if pathway=="Plan Appraiser" else 0, "plan_joint_completed": plan_joint_completed,
-            "plan_independent_required": 1 if pathway=="Plan Appraiser" else 0, "plan_independent_completed": plan_independent_completed,
+            "pathway": pathway, "domain": domain, "required_scope": scope, "required_training": "Core + domain modules",
+            "training_status": snapshot["training_status"], "mcq_status": snapshot["mcq_status"],
+            "witness_required": 0 if pathway=="Plan Appraiser" else 2, "witness_completed": snapshot["witness_completed"],
+            "supervised_required": 0 if pathway=="Plan Appraiser" else 1, "supervised_completed": snapshot["supervised_completed"],
+            "plan_joint_required": 2 if pathway=="Plan Appraiser" else 0, "plan_joint_completed": snapshot["plan_joint_completed"],
+            "plan_independent_required": 1 if pathway=="Plan Appraiser" else 0, "plan_independent_completed": snapshot["plan_independent_completed"],
             "tutor_rating": 0, "technical_interview_status": "Pending", "qmr_status": "Pending", "crb_status": "Pending",
-            "authorization_status": auth_status, "gap_summary": "; ".join(gaps) if gaps else "No major gap",
-            "risk_level": "High" if gaps else "Low", "expiry_date": "", "last_review_date": today(), "updated_on": now()
+            "authorization_status": snapshot["authorization_status"], "gap_summary": snapshot["gap_summary"],
+            "risk_level": snapshot["risk_level"], "expiry_date": "", "last_review_date": today(), "updated_on": now()
         })
         st.success("Competency matrix calculated and saved.")
     df = db_all("competency_matrix")
@@ -9036,162 +9262,11 @@ def main() -> None:
         render_project_information()
     show_popup_notifications(actor)
     page = sidebar(actor)
-    if page == "CEO Dashboard": ceo_dashboard_page(actor)
-    elif page == "My Training": my_training_page(actor)
-    elif page == "Assigned Candidates": assigned_candidates_page(actor)
-    elif page == "Dashboard": dashboard_page(actor)
-    elif page == "Maritime Registry": maritime_registry_page(actor)
-    elif page == "Maritime Surveys": maritime_survey_center_page(actor)
-    elif page == "Admin": admin_page(actor)
-    elif page == "Training Matrix": training_matrix_page(actor)
-    elif page == "Training": training_page(actor)
-    elif page == "Files": files_page(actor)
-    elif page == "Development Plans": development_plan_page(actor)
-    elif page == "Competency": competency_page(actor)
-    elif page == "Qualification Scopes": qualification_scopes_page(actor)
-    elif page == "Practical/Witness": practical_page(actor)
-    elif page == "Authorization": authorization_page(actor)
-    elif page == "CRB": crb_page(actor)
-    elif page == "Job Allocation": job_allocation_page(actor)
-    elif page == "KPI": kpi_page(actor)
-    elif page == "CPD": cpd_page(actor)
-    elif page == "Knowledge Library": knowledge_page(actor)
-    elif page == "QMS": qms_page(actor)
-    elif page == "Revalidation": revalidation_page(actor)
-    elif page == "Backup": backup_page(actor)
-    elif page == "QR Verify": qr_verify_page(actor)
-    elif page == "Technical Authority": technical_authority_page(actor)
-    elif page == "Survey Report Review": survey_report_review_page(actor)
-    elif page == "Plan Review QA": plan_review_quality_page(actor)
-    elif page == "Competency NCR": competency_ncr_page(actor)
-    elif page == "Gap Advisor": competency_gap_advisor_page(actor)
-    elif page == "Annual Board": annual_competency_board_page(actor)
-    elif page == "Restrictions": authorization_restrictions_page(actor)
-    elif page == "Client Feedback": client_feedback_page(actor)
-    elif page == "Succession": succession_planning_page(actor)
-    elif page == "Workforce Planning": workforce_planning_page(actor)
-    elif page == "Accreditation Readiness": accreditation_readiness_page(actor)
-    elif page == "Interpretation Portal": interpretation_portal_page(actor)
-    elif page == "Competency Matrix": competency_matrix_page(actor)
-    elif page == "NB Survey Ops": survey_operations_page(actor)
-    elif page == "In-Service Survey Ops": survey_operations_page(actor)
-    elif page == "Designer Portal": designer_portal_page(actor)
-    elif page == "Shipyard Portal": shipyard_portal_page(actor)
-    elif page == "Drawing Revisions": drawing_revisions_page(actor)
-    elif page == "Appraised Drawing Distribution": drawing_distribution_page(actor)
-    elif page == "NCR Closure": ncr_closure_page(actor)
-    elif page == "Role Activity Evaluation": role_activity_evaluation_page(actor)
-    elif page == "Enterprise Upgrade Center": enterprise_upgrade_center_page(actor)
-    elif page == "Audit Readiness Engine": audit_readiness_engine_page(actor)
-    elif page == "Workforce Forecasting": workforce_forecasting_page(actor)
-    elif page == "Enhanced Training Flow": enterprise_training_flow_page(actor)
-    elif page == "Mobile Survey Evidence": mobile_survey_evidence_page(actor)
-    elif page == "NB Stage Gate": new_building_stage_gate_page(actor)
-    elif page == "Training Practical Eligibility": training_practical_eligibility_page(actor)
-    elif page == "Digital Certificates": digital_certificates_page(actor)
-    elif page == "My Certificates": my_certificates_page(actor)
-    elif page == "Reauthorization Engine": reauthorization_engine_page(actor)
-    elif page == "World-Class Gap Analysis": role_activity_worldclass_gap_page(actor)
-    elif page == "World-Class Strong Controls": worldclass_strong_controls_page(actor)
-    elif page == "Final Professional Closure": final_professional_closure_page(actor)
-    elif page == "ERP Governance Hub": erp_governance_hub_page(actor)
-    elif page == "Competency Manager": competency_manager_page(actor)
-    elif page == "Survey Operations Manager": survey_ops_manager_page(actor)
-    elif page == "Plan Approval Manager": plan_approval_manager_page(actor)
-    elif page == "Document Control": document_controller_page(actor)
-    elif page == "Technical Monitoring": technical_monitor_page(actor)
-    elif page == "Client Owner Portal": client_owner_portal_page(actor)
-    elif page == "Technical Knowledge Repository": technical_knowledge_repository_page(actor)
-    elif page == "Advanced Practical Development": practical_development_page(actor)
-    elif page == "Executive ERP Analytics": executive_erp_analytics_page(actor)
-    elif page == "State-of-Art ERP Review": state_of_art_erp_review_page(actor)
-    elif page == "Role Permission Matrix": role_permission_matrix_page(actor)
-    elif page == "UI/UX & Performance Health": uiux_performance_health_page(actor)
-    elif page == "Role Maturity Optimizer": role_maturity_optimizer_page(actor)
-    elif page == "Workflow Task Center": workflow_task_center_page(actor)
-    elif page == "Survey Logbook & Decay": survey_logbook_decay_page(actor)
-    elif page == "Plan Peer Quality": plan_peer_quality_page(actor)
-    elif page == "Controlled Transmittals": controlled_transmittals_page(actor)
-    elif page == "Enterprise Health Center": enterprise_health_center_page(actor)
-    elif page == "State-of-Art UI/UX Design": uiux_state_of_art_design_page(actor)
-    elif page == "Performance Safeguards": performance_safeguards_page(actor)
-    elif page == "Enterprise Search": enterprise_search_page(actor)
-    elif page == "Knowledge Graph": knowledge_graph_page(actor)
-    elif page == "AI Competency Advisor": ai_competency_advisor_page(actor)
-    elif page == "Lessons Learned Portal": lessons_learned_portal_page(actor)
-    elif page == "Enterprise Notification Engine": enterprise_notification_engine_page(actor)
-    elif page == "Mobile App Center": mobile_app_center_page(actor)
-    elif page == "Client Self Service": client_self_service_page(actor)
-    elif page == "World-Class Information Flow": worldclass_information_flow_page(actor)
-
-    elif page == "Enterprise Communication Hub": enterprise_communication_hub_page(actor)
-    elif page == "Native Mobile Operations": native_mobile_operations_page(actor)
-    elif page == "Strict Document Enforcement": strict_document_enforcement_page(actor)
-    elif page == "Expanded Client Self-Service": expanded_client_self_service_page(actor)
-    elif page == "Commercial Module": commercial_module_page(actor)
-    elif page == "HR Integration Layer": hr_integration_layer_page(actor)
-    elif page == "Rule Change Management": rule_change_management_page(actor)
-    elif page == "Rule Development Automation": rule_development_automation_page(actor)
-    elif page == "Enterprise Workflow Engine": enterprise_workflow_engine_page(actor)
-    elif page == "Final ERP Completion Review": final_erp_completion_review_page(actor)
-    elif page == "Production Security Center": production_security_center_page(actor)
-    elif page == "External Portal Isolation": external_portal_isolation_page(actor)
-    elif page == "Database Enforcement Center": database_enforcement_center_page(actor)
-    elif page == "Real Integration Connectors": real_integration_connectors_page(actor)
-    elif page == "Field Mobile App Blueprint": field_mobile_app_blueprint_page(actor)
-    elif page == "Production Testing UAT": production_testing_uat_page(actor)
-    elif page == "Workflow SLA Rules": workflow_sla_rules_page(actor)
-    elif page == "UI/UX Final Polish": uiux_final_polish_page(actor)
-    elif page == "Final Release Readiness": final_release_readiness_page(actor)
-
-    elif page == "Final Live Integration Center": final_live_integration_center_page(actor)
-    elif page == "Final Mobile PWA Operations": final_mobile_pwa_operations_page(actor)
-    elif page == "Final Database Hard Rules": final_database_hard_rules_page(actor)
-    elif page == "Final Portal Isolation": final_portal_isolation_page(actor)
-    elif page == "Final Security Operations": final_security_operations_page(actor)
-    elif page == "Final Role Landing UX": final_role_landing_ux_page(actor)
-    elif page == "Final UAT Test Suite": final_uat_test_suite_page(actor)
-    elif page == "Final Live ERP Launch Control": final_live_erp_launch_control_page(actor)
-    elif page == "International ERP Final Review": international_erp_final_review_page(actor)
-    elif page == "Finance & Commercial Control": finance_commercial_control_page(actor)
-    elif page == "HR Availability & Leave Control": hr_availability_leave_control_page(actor)
-    elif page == "IT Security Operations": it_security_operations_page(actor)
-    elif page == "Legal Contract & Dispute Control": legal_contract_dispute_control_page(actor)
-    elif page == "Customer Support Ticket Center": customer_support_ticket_center_page(actor)
-    elif page == "Flag Administration Portal": flag_administration_portal_page(actor)
-    elif page == "PSC / Insurance Viewer": psc_insurance_viewer_page(actor)
-    elif page == "Manufacturer Vendor Portal": manufacturer_vendor_portal_page(actor)
-    elif page == "Subcontracted Surveyor Workspace": subcontracted_surveyor_workspace_page(actor)
-    elif page == "Client Certificate Center": client_certificate_center_page(actor)
-    elif page == "Client Survey History": client_survey_history_page(actor)
-    elif page == "Client Payment Center": client_payment_center_page(actor)
-    elif page == "V15 Final Gap Closure Review": v15_final_gap_closure_review_page(actor)
-
-    elif page == "V16 Production Readiness Center": v16_production_readiness_center_page(actor)
-    elif page == "Live Integration Operations": v16_live_integration_operations_page(actor)
-    elif page == "Immutable Audit Control": v16_immutable_audit_control_page(actor)
-    elif page == "External Portal Data Isolation": v16_external_portal_data_isolation_page(actor)
-    elif page == "Internal Classification Society Portal": v16_internal_class_society_portal_page(actor)
-    elif page == "External Stakeholder Portal": v16_external_stakeholder_portal_page(actor)
-    elif page == "Backend Communication Flow Validator": v16_backend_communication_flow_validator_page(actor)
-    elif page == "Role UAT Matrix": v16_role_uat_matrix_page(actor)
-    elif page == "Digital Signature Trust Center": v16_digital_signature_trust_center_page(actor)
-    elif page == "Field PWA Operations": v16_field_pwa_operations_page(actor)
-    elif page == "Finance HR Integration Verification": v16_finance_hr_integration_verification_page(actor)
-    elif page == "Database Rules Verification": v16_database_rules_verification_page(actor)
-    elif page == "Final V16 Gap Closure": v16_final_gap_closure_page(actor)
-    elif page == "V17 Production Closure & Role Gap Review": v17_production_closure_role_gap_review_page(actor)
-    elif page == "V18 Live Pre-Launch Testing": v18_live_prelaunch_testing_page(actor)
-    elif page == "HR + Accounting System": v18_hr_accounting_system_page(actor)
-    elif page == "V18 Final Launch Gap Closure": v18_final_launch_gap_closure_page(actor)
-    elif page == "Authorization Lifecycle": authorization_lifecycle_page(actor)
-    elif page == "CPD & Refresher Control": cpd_refresher_control_page(actor)
-    elif page == "Monitoring Schedule": monitoring_schedule_page(actor)
-    elif page == "Competency Board Review": competency_board_review_page(actor)
-    elif page == "Rule Update Training Impact": rule_update_training_impact_page(actor)
-    elif page == "Reauthorization Status Center": reauthorization_status_center_page(actor)
-    elif page == "Authorization Lifecycle Gap Closure": authorization_lifecycle_gap_closure_page(actor)
-    elif page == "Management": management_page(actor)
+    handler = module_registry.get_page_handler(page)
+    if handler is not None:
+        handler(actor)
+    else:
+        st.error(f"Page handler not found for '{page}'. Please refresh or contact support.")
 
 
 # =====================================================================
