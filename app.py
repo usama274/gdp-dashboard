@@ -34,6 +34,7 @@ from maritime_integration import (
     render_theme_toggle,
     register_maritime_pages,
 )
+from maritime_module import SURVEY_TYPES
 
 try:
     from supabase import create_client
@@ -576,6 +577,11 @@ def db_insert(table: str, row: dict) -> None:
         row,
     )
     clear_db_cache()
+
+
+def db_filter(table: str, where_sql: str, params_tuple: tuple[tuple[str, object], ...] = ()) -> pd.DataFrame:
+    """Convenience wrapper for filtered table reads used across the app."""
+    return db_where(table, where_sql, params_tuple)
 
 
 def db_update(table: str, id_col: str, id_val: str, row: dict) -> None:
@@ -8823,6 +8829,54 @@ def final_uat_test_suite_page(actor: dict) -> None:
     secure MCQ submit, certificate generation, survey assignment lock, drawing revision lock, NCR closure,
     client/shipyard/designer isolation, payment workflow, HR availability check, Render deployment.
     """)
+
+
+def v17_production_closure_role_gap_review_page(actor: dict) -> None:
+    st.title("🧭 V17 Production Closure & Role Gap Review")
+    st.caption("Operational review for production closure and role gap remediation.")
+
+    users_df = db_all("users")
+    maturity_df = db_all("role_activity_maturity_v10")
+    workflow_df = db_all("workflow_task_engine_v10")
+    decay_df = db_all("competency_decay_v10")
+
+    open_tasks = db_filter("workflow_task_engine_v10", "status != :status", (("status", "Closed"),))
+    review_required = db_filter("competency_decay_v10", "decay_status = :status", (("status", "Review Required"),))
+
+    if not maturity_df.empty and "current_score" in maturity_df.columns:
+        gap_roles = maturity_df[pd.to_numeric(maturity_df["current_score"], errors="coerce").fillna(100) < 100]
+    else:
+        gap_roles = pd.DataFrame()
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Active Users", len(users_df))
+    c2.metric("Open Workflow Tasks", len(open_tasks))
+    c3.metric("Roles Below Target", len(gap_roles))
+    c4.metric("Decay Reviews Required", len(review_required))
+
+    st.success("The V17 closure and role gap review workflow is now active with live operational summaries.")
+    st.info("Use this page to inspect role gaps, overdue workflow work, and competency review actions.")
+
+    with st.expander("Role gap priorities", expanded=True):
+        if not gap_roles.empty:
+            display_gap_roles = gap_roles[["role_name", "activity_name", "current_score", "target_score", "gap", "owner_role", "status"]].copy()
+            display_gap_roles = display_gap_roles.sort_values(["role_name", "activity_name"])
+            table(display_gap_roles, max_rows=400)
+        else:
+            st.info("No maturity gaps are currently flagged. The role review table is ready for future updates.")
+
+    with st.expander("Open workflow and decay actions"):
+        if not workflow_df.empty:
+            workflow_preview = workflow_df[["workflow_name", "task_title", "status", "priority", "due_date", "target_role"]].copy() if {"workflow_name", "task_title", "status", "priority", "due_date", "target_role"}.issubset(workflow_df.columns) else workflow_df.copy()
+            table(workflow_preview.head(20), max_rows=200)
+        else:
+            st.info("No workflow tasks have been created yet.")
+
+        if not decay_df.empty:
+            decay_preview = decay_df[["user_id", "name", "scope", "decay_status", "required_action", "next_review_date", "status"]].copy() if {"user_id", "name", "scope", "decay_status", "required_action", "next_review_date", "status"}.issubset(decay_df.columns) else decay_df.copy()
+            table(decay_preview.head(20), max_rows=200)
+        else:
+            st.info("No competency decay review records are currently available.")
 
 
 def final_live_erp_launch_control_page(actor: dict) -> None:
