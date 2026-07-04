@@ -5554,6 +5554,47 @@ h1{{font-size:28px;color:#06164a;margin:0;text-transform:uppercase}} h2{{font-si
 </div></div></body></html>"""
 
 
+def evaluate_reauthorization_readiness(
+    cpd_hours: float,
+    activity_count: int,
+    open_ncr_count: int,
+    complaint_count: int,
+    requirement: dict | None = None,
+    qmr_clearance: str = "Pending",
+    technical_interview_status: str = "Pending",
+) -> dict:
+    """Evaluate whether a certificate can be reauthorized based on the current evidence status."""
+    requirement = requirement or {}
+    req_cpd = float(requirement.get("required_cpd_hours") or 0)
+    req_activity = int(requirement.get("min_activity_count") or 0)
+    max_ncr = int(requirement.get("max_major_ncr") or 0)
+    max_complaints = int(requirement.get("max_client_complaints") or 0)
+    gaps = []
+    if float(cpd_hours or 0) < req_cpd:
+        gaps.append(f"CPD below target: {cpd_hours}/{req_cpd}h")
+    if int(activity_count or 0) < req_activity:
+        gaps.append(f"Insufficient relevant activity count: {activity_count}/{req_activity}")
+    if int(open_ncr_count or 0) > max_ncr:
+        gaps.append(f"Open NCRs exceed threshold: {open_ncr_count}/{max_ncr}")
+    if int(complaint_count or 0) > max_complaints:
+        gaps.append(f"Client complaints exceed threshold: {complaint_count}/{max_complaints}")
+    if clean(requirement.get("require_qmr_clearance")) == "Yes" and str(qmr_clearance).lower() not in {"cleared", "passed", "approved", "complete", "verified"}:
+        gaps.append("QMR clearance pending")
+    if clean(requirement.get("require_technical_interview")) == "Yes" and str(technical_interview_status).lower() not in {"passed", "completed", "approved", "recommended", "cleared"}:
+        gaps.append("Technical interview not passed")
+    can_reauthorize = not gaps
+    suggested_decision = "Reauthorized" if can_reauthorize else ("Conditional Reauthorization" if not gaps or len(gaps) <= 2 else "Rejected")
+    return {
+        "can_reauthorize": can_reauthorize,
+        "suggested_decision": suggested_decision,
+        "gaps": gaps,
+        "cpd_hours": float(cpd_hours or 0),
+        "activity_count": int(activity_count or 0),
+        "open_ncr_count": int(open_ncr_count or 0),
+        "complaint_count": int(complaint_count or 0),
+    }
+
+
 def issue_digital_certificate_v3(actor: dict, user_row: dict, cert_type: str, pathway: str, scope: str, qualification: str, modules: str, level: str = "Level 1", activities: str = "", restrictions: str = "None", years: int = PSB_AUTH_VALIDITY_YEARS) -> dict:
     cid = uid("DCERT")
     no_prefix = "ATT" if cert_type == "Training Attestation" else ("REAUTH" if cert_type == "Reauthorization Certificate" else "AUTH")
@@ -5770,7 +5811,17 @@ def reauthorization_engine_page(actor: dict) -> None:
             c4.metric("Current Expiry", clean(cert.get("expiry_date")) or "N/A")
             qmr_clear = st.selectbox("QMR Clearance", ["Pending", "Cleared", "Not Cleared"])
             int_status = st.selectbox("Technical Interview", ["Pending", "Passed", "Failed", "Not Required"])
-            decision = st.selectbox("Decision", ["Pending", "Reauthorized", "Conditional Reauthorization", "Rejected"])
+            readiness = evaluate_reauthorization_readiness(
+                cpd_hours=cpd_hours,
+                activity_count=act_count,
+                open_ncr_count=ncr_count,
+                complaint_count=0,
+                requirement=req,
+                qmr_clearance=qmr_clear,
+                technical_interview_status=int_status,
+            )
+            st.info("Readiness outcome: " + readiness["suggested_decision"] + ("" if not readiness["gaps"] else " — " + "; ".join(readiness["gaps"])))
+            decision = st.selectbox("Decision", ["Pending", "Reauthorized", "Conditional Reauthorization", "Rejected"], index={"Pending":0,"Reauthorized":1,"Conditional Reauthorization":2,"Rejected":3}[readiness["suggested_decision"]])
             remarks = st.text_area("Review Remarks")
             if st.button("Save Reauthorization Review"):
                 new_exp = add_years(date.today().isoformat(), int(req.get("validity_years") or PSB_AUTH_VALIDITY_YEARS)) if decision in ["Reauthorized", "Conditional Reauthorization"] else ""

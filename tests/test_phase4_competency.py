@@ -1,6 +1,6 @@
 import pandas as pd
 
-from app import build_competency_matrix_snapshot, build_training_pathway_rule_record
+from app import build_competency_matrix_snapshot, build_training_pathway_rule_record, evaluate_reauthorization_readiness
 
 
 def test_build_training_pathway_rule_record_uses_review_count_schema():
@@ -28,6 +28,29 @@ def test_build_training_pathway_rule_record_uses_review_count_schema():
     assert row["required_independent_review_count"] == 1
     assert row["required_joint_review_count"] == 0
     assert row["required_training_ids"] == "T1, T2"
+
+
+def test_evaluate_reauthorization_readiness_recommends_reauthorization_when_criteria_met():
+    result = evaluate_reauthorization_readiness(
+        cpd_hours=18,
+        activity_count=3,
+        open_ncr_count=0,
+        complaint_count=0,
+        requirement={
+            "required_cpd_hours": 12,
+            "min_activity_count": 2,
+            "max_major_ncr": 0,
+            "max_client_complaints": 1,
+            "require_qmr_clearance": "Yes",
+            "require_technical_interview": "Yes",
+        },
+        qmr_clearance="Cleared",
+        technical_interview_status="Passed",
+    )
+
+    assert result["can_reauthorize"] is True
+    assert result["suggested_decision"] == "Reauthorized"
+    assert result["gaps"] == []
 
 
 def test_build_competency_matrix_snapshot_uses_current_phase4_tables():
